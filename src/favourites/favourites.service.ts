@@ -1,61 +1,54 @@
 import { Injectable } from '@nestjs/common';
-import { User } from 'src/users/user.entity';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Property } from 'src/properties/property.entity';
+import { Favorite } from './favourites.entity';
 
 @Injectable()
 export class FavouritesService {
   constructor(
-    @InjectRepository(User)
-    private userRepo: Repository<User>,
-    @InjectRepository(Property)
-    private propertyRepo: Repository<Property>,
+    @InjectRepository(Favorite)
+    private favoriteRepo: Repository<Favorite>,
   ) {}
 
-  async addFavorite(userId: number, propertyId: number) {
-    const user = await this.userRepo.findOne({
-      where: { id: userId },
-      relations: ['favorites'],
+  async toggle(userId: number, propertyId: number) {
+    const existing = await this.favoriteRepo.findOne({
+      where: {
+        user: { id: userId },
+        property: { id: propertyId },
+      },
+      relations: ['user', 'property'],
     });
+    // REMOVE
+    if (existing) {
+      await this.favoriteRepo.remove(existing);
 
-    if (!user) return null;
-
-    const property = await this.propertyRepo.findOneBy({
-      id: propertyId,
-    });
-
-    if (!property) return null;
-
-    const alreadyExists = user.favorites.some((p) => p.id === propertyId);
-
-    if (alreadyExists) {
-      return user.favorites;
+      return {
+        favorited: false,
+      };
     }
 
-    user.favorites.push(property);
-
-    return this.userRepo.save(user);
-  }
-
-  async removeFavorite(userId: number, propertyId: number) {
-    const user = await this.userRepo.findOne({
-      where: { id: userId },
-      relations: ['favorites'],
+    // CREATE
+    const favorite = this.favoriteRepo.create({
+      user: { id: userId },
+      property: { id: propertyId },
     });
 
-    if (!user) return null;
-    user.favorites = user.favorites.filter((p) => p.id !== Number(propertyId));
-    return this.userRepo.save(user);
+    await this.favoriteRepo.save(favorite);
+
+    return {
+      favorited: true,
+    };
   }
 
-  async getFavorites(userId: number) {
-    const user = await this.userRepo.findOne({
-      where: { id: userId },
-      relations: ['favorites'],
+  async getUserFavorites(userId: number) {
+    return this.favoriteRepo.find({
+      where: {
+        user: { id: userId },
+      },
+      relations: ['property'],
+      order: {
+        createdAt: 'DESC',
+      },
     });
-
-    if (!user) return null;
-    return user.favorites;
   }
 }

@@ -7,10 +7,16 @@ import { AuthModule } from './auth/auth.module';
 import { PropertiesModule } from './properties/properties.module';
 import { ConfigModule } from '@nestjs/config';
 import { FavouritesModule } from './favourites/favourites.module';
+import { JwtModule } from '@nestjs/jwt';
+import { LeadsModule } from './leads/leads.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+    }),
+    JwtModule.register({
+      secret: process.env.JWT_SECRET,
+      signOptions: { expiresIn: '1d' },
     }),
     TypeOrmModule.forRoot({
       type: 'mysql',
@@ -26,6 +32,7 @@ import { FavouritesModule } from './favourites/favourites.module';
     AuthModule,
     PropertiesModule,
     FavouritesModule,
+    LeadsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -1,12 +1,12 @@
 import { User } from 'src/users/user.entity';
 import {
-  Entity,
   Column,
-  PrimaryGeneratedColumn,
-  Index,
   CreateDateColumn,
+  Entity,
+  Index,
+  ManyToOne,
+  PrimaryGeneratedColumn,
   UpdateDateColumn,
-  ManyToMany,
 } from 'typeorm';
 
 @Entity()
@@ -20,42 +20,46 @@ export class Property {
   @Column('text')
   description!: string;
 
+  @Index() // ← filtered + sorted
+  @Column('decimal', { precision: 12, scale: 2 })
+  price!: number;
+
+  @Index() // ← filtered
   @Column()
-  @Index()
   city!: string;
+
+  @Index() // ← filtered
+  @Column()
+  propertyType!: string;
+
+  @Index() // ← filtered
+  @Column({ default: 0 })
+  bedrooms!: number;
+
+  @Column({ default: 0 })
+  bathrooms!: number;
+
+  @Column('decimal', { precision: 10, scale: 6, nullable: true })
+  latitude!: number;
+
+  @Column('decimal', { precision: 10, scale: 6, nullable: true })
+  longitude!: number;
 
   @Column()
   location!: string;
 
-  @Column()
-  @Index()
-  propertyType!: string;
-
-  @Column()
-  @Index()
-  price!: number;
-
-  @Column()
-  @Index()
-  area!: number;
-
-  @Column()
-  @Index()
-  bedrooms!: number;
-
-  @Column()
-  @Index()
-  bathrooms!: number;
-
-  @Column('simple-array')
+  @Column('simple-array', { nullable: true })
   images!: string[];
 
-  @CreateDateColumn()
-  @Index()
-  createdAt!: Date;
+  @Column({ default: 0 })
+  area!: number;
 
-  @ManyToMany(() => User, (user) => user.favorites)
-  likedBy!: User[];
+  @ManyToOne(() => User, (user) => user.properties, { onDelete: 'CASCADE' })
+  owner!: User;
+
+  @Index() // ← default sort column
+  @CreateDateColumn()
+  createdAt!: Date;
 
   @UpdateDateColumn()
   updatedAt!: Date;

@@ -14,7 +14,6 @@ import { CreateUserDto } from './dto/create-user.dto';
 import type { Response, Request } from 'express';
 import { AuthService } from 'src/auth/auth.service';
 import { JwtGuard } from 'src/auth/jwt/jwt.guard';
-
 @Controller('user')
 export class UsersController {
   constructor(
@@ -57,9 +56,7 @@ export class UsersController {
 
   @UseGuards(JwtGuard)
   @Get('me')
-  me(@Req() req: Request & { user: any }) {
-    console.log(req.headers);
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+  me(@Req() req: Request) {
     return req.user;
   }
 

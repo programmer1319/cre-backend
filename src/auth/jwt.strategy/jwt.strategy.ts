@@ -7,6 +7,7 @@ import { ConfigService } from '@nestjs/config';
 interface JwtPayload {
   sub: string;
   email?: string;
+  role?: string;
   iat?: number;
   exp?: number;
 }
@@ -16,7 +17,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(config: ConfigService) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         (req) => req?.cookies?.accessToken,
       ]),
       ignoreExpiration: false,
@@ -28,6 +28,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     return {
       id: payload.sub,
       email: payload.email,
+      role: payload.role,
     };
   }
 }

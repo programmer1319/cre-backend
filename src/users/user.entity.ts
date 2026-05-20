@@ -1,12 +1,13 @@
-import { Property } from 'src/properties/property.entity';
 import {
   Entity,
   Column,
   PrimaryGeneratedColumn,
   Index,
-  JoinTable,
-  ManyToMany,
+  OneToMany,
 } from 'typeorm';
+import { UserRole } from './user-role.enum';
+import { Favorite } from 'src/favourites/favourites.entity';
+import { Property } from 'src/properties/property.entity';
 
 @Entity()
 export class User {
@@ -23,7 +24,12 @@ export class User {
   @Column()
   password!: string;
 
-  @ManyToMany(() => Property, (property) => property.likedBy)
-  @JoinTable()
-  favorites!: Property[];
+  @Column({ type: 'enum', enum: UserRole, default: UserRole.USER })
+  role!: UserRole;
+
+  @OneToMany(() => Property, (property) => property.owner)
+  properties!: Property[];
+
+  @OneToMany(() => Favorite, (favorite) => favorite.user)
+  favorites!: Favorite[];
 }
