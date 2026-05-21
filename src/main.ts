@@ -10,7 +10,7 @@ async function bootstrap() {
   app.use(cookieParser());
   app.set('trust proxy', 1);
   app.enableCors({
-    origin: 'https://cre-app-api.vercel.app',
+    origin: ['http://localhost:4200', 'https://cre-app-api.vercel.app'],
     credentials: true,
   });
   app.setGlobalPrefix('api');
