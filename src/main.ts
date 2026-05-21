@@ -8,8 +8,9 @@ import { join } from 'path';
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.use(cookieParser());
+  app.set('trust proxy', 1);
   app.enableCors({
-    origin: 'http://localhost:4200',
+    origin: 'https://cre-app-api.vercel.app',
     credentials: true,
   });
   app.setGlobalPrefix('api');
