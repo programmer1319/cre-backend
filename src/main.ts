@@ -10,7 +10,7 @@ async function bootstrap() {
   app.use(cookieParser());
   app.set('trust proxy', 1);
   app.enableCors({
-    origin: ['http://localhost:4200', 'https://cre-app-api.vercel.app'],
+    origin: ['http://localhost:4200', 'https://cre-app-api.vercel.app', 'https://lightpink-hamster-485746.hostingersite.com'],
     credentials: true,
   });
   app.setGlobalPrefix('api');
