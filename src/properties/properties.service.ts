@@ -8,6 +8,7 @@ import { Repository } from 'typeorm';
 import { Property } from './property.entity';
 import { FilterPropertyDto } from './filter-property.dto';
 import { MapBoundsDto } from './map-bounds.dto';
+import type { Express } from 'express';
 
 const LIST_COLUMNS = [
   'property.id',

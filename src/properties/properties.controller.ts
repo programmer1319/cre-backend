@@ -18,11 +18,12 @@ import { extname } from 'path';
 import { ConfigService } from '@nestjs/config';
 import { PropertiesService } from './properties.service';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
-import { RolesGuard } from 'src/guards/roles.guard'; 
-import { Roles } from 'src/users/roles.decorater'; 
+import { RolesGuard } from 'src/guards/roles.guard';
+import { Roles } from 'src/users/roles.decorater';
 import { UserRole } from '../users/user-role.enum';
 import { FilterPropertyDto } from './filter-property.dto';
 import { MapBoundsDto } from './map-bounds.dto';
+import type { Express } from 'express';
 
 const uploadInterceptor = () =>
   UseInterceptors(
