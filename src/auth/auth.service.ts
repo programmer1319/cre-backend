@@ -19,8 +19,8 @@ export class AuthService {
     return {
       httpOnly: true,
       secure: true,
-      sameSite: 'none' as const,
-      partitioned: true,
+      sameSite: 'lax' as const,
+      domain: '.hostingersite.com',
     };
   }
 
@@ -30,9 +30,7 @@ export class AuthService {
     if (!user || !(await bcrypt.compare(password, user.password))) {
       throw new UnauthorizedException('Invalid email or password');
     }
-
     this.issueTokens(user, res);
-    console.log('Logged in successfully');
     return {
       user: {
         id: user.id,
@@ -51,7 +49,6 @@ export class AuthService {
 
     const accessToken = this.jwtService.sign(payload, { expiresIn: '15m' });
     const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
-
     res.cookie('accessToken', accessToken, {
       ...this.cookieConfig,
       maxAge: 15 * 60 * 1000,
@@ -61,10 +58,7 @@ export class AuthService {
       ...this.cookieConfig,
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
-    console.log('=============issueTokens()================');
-    console.log('Access token: ', accessToken);
-    console.log('Refresh token: ', refreshToken);
-    console.log('Cookies', res.cookie);
+
   }
 
   refreshToken(refreshToken: string, res: Response) {
@@ -83,9 +77,7 @@ export class AuthService {
         ...this.cookieConfig,
         maxAge: 15 * 60 * 1000,
       });
-      console.log('=============refreshTokens()================');
-      console.log('Access token: ', newAccessToken);
-      console.log('Cookies', res.cookie);
+ 
       return { success: true };
     } catch {
       throw new UnauthorizedException('Invalid or expired refresh token');
@@ -95,7 +87,6 @@ export class AuthService {
   logout(res: Response) {
     res.clearCookie('accessToken', this.cookieConfig);
     res.clearCookie('refreshToken', this.cookieConfig);
-    console.log('Logged out successfully');
     return { message: 'Logged out successfully' };
   }
 }

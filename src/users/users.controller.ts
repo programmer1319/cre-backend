@@ -57,11 +57,8 @@ export class UsersController {
   @UseGuards(JwtGuard)
   @Get('me')
   me(@Req() req: Request) {
-    console.log('=============me()================');
-    console.log('req.user: ', req.user);
     return req.user;
   }
-
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.usersService.findOne(id);

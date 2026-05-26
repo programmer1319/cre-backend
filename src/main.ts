@@ -14,6 +14,8 @@ async function bootstrap() {
       'http://localhost:4200',
       'http://localhost:4000',
       'https://lightpink-hamster-485746.hostingersite.com',
+      'http://app.local.test:4200',
+      'http://app.local.test:4000',
     ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -21,6 +23,9 @@ async function bootstrap() {
   });
   app.setGlobalPrefix('api');
   app.useGlobalPipes(new ValidationPipe());
+  app.use((req, _, next) => {
+    next();
+  });
   app.useStaticAssets(join(__dirname, '..', 'uploads'), {
     prefix: '/uploads',
   });
