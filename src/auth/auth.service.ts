@@ -18,10 +18,8 @@ export class AuthService {
   private get cookieConfig() {
     return {
       httpOnly: true,
-      secure: true, // always true — backend is always HTTPS
-      sameSite: 'none' as const, // always none — always cross-domain
-      domain: undefined, // no domain — scoped to hostingersite.com exactly
-      path: '/',
+      secure: true,
+      sameSite: 'none' as const,
     };
   }
 
