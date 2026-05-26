@@ -15,6 +15,16 @@ export class AuthService {
     private userRepository: Repository<User>,
   ) {}
 
+  private get cookieConfig() {
+    return {
+      httpOnly: true,
+      secure: true, // always true — backend is always HTTPS
+      sameSite: 'none' as const, // always none — always cross-domain
+      domain: undefined, // no domain — scoped to hostingersite.com exactly
+      path: '/',
+    };
+  }
+
   async login(email: string, password: string, res: Response) {
     const user = await this.userRepository.findOne({ where: { email } });
 
@@ -34,28 +44,40 @@ export class AuthService {
     };
   }
 
+  verifyToken(token: string) {
+    return this.jwtService.verify<JwtPayload>(token);
+  }
+  private issueTokens(user: User, res: Response) {
+    const payload = { sub: user.id, email: user.email, role: user.role };
+
+    const accessToken = this.jwtService.sign(payload, { expiresIn: '15m' });
+    const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
+
+    res.cookie('accessToken', accessToken, {
+      ...this.cookieConfig,
+      maxAge: 15 * 60 * 1000,
+    });
+
+    res.cookie('refreshToken', refreshToken, {
+      ...this.cookieConfig,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+  }
+
   refreshToken(refreshToken: string, res: Response) {
-    if (!refreshToken) {
+    if (!refreshToken)
       throw new UnauthorizedException('No refresh token provided');
-    }
 
     try {
-      // Verify and get the full payload including role
       const payload = this.jwtService.verify<JwtPayload>(refreshToken);
 
       const newAccessToken = this.jwtService.sign(
-        {
-          sub: payload.sub,
-          email: payload.email,
-          role: payload.role, // ← was missing — role dropped after every refresh
-        },
+        { sub: payload.sub, email: payload.email, role: payload.role },
         { expiresIn: '15m' },
       );
 
       res.cookie('accessToken', newAccessToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        ...this.cookieConfig,
         maxAge: 15 * 60 * 1000,
       });
 
@@ -65,50 +87,9 @@ export class AuthService {
     }
   }
 
-  verifyToken(token: string) {
-    return this.jwtService.verify<JwtPayload>(token);
-  }
-
   logout(res: Response) {
-    res.clearCookie('accessToken', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-      path: '/',
-    });
-    res.clearCookie('refreshToken', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-      path: '/',
-    });
+    res.clearCookie('accessToken', this.cookieConfig);
+    res.clearCookie('refreshToken', this.cookieConfig);
     return { message: 'Logged out successfully' };
-  }
-
-  // ── private ──────────────────────────────────────────────
-  // Single place that sets both cookies — keeps cookie config consistent
-  private issueTokens(user: User, res: Response) {
-    const payload = {
-      sub: user.id,
-      email: user.email,
-      role: user.role,
-    };
-
-    const accessToken = this.jwtService.sign(payload, { expiresIn: '15m' });
-    const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
-
-    res.cookie('accessToken', accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-      maxAge: 15 * 60 * 1000,
-    });
-
-    res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
   }
 }

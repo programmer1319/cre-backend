@@ -10,8 +10,14 @@ async function bootstrap() {
   app.use(cookieParser());
   app.set('trust proxy', 1);
   app.enableCors({
-    origin: ['http://localhost:4200', 'https://cre-app-api.vercel.app', 'https://lightpink-hamster-485746.hostingersite.com'],
+    origin: [
+      'http://localhost:4200',
+      'http://localhost:4000',
+      'https://lightpink-hamster-485746.hostingersite.com',
+    ],
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
   });
   app.setGlobalPrefix('api');
   app.useGlobalPipes(new ValidationPipe());
