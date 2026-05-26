@@ -20,6 +20,7 @@ export class AuthService {
       httpOnly: true,
       secure: true,
       sameSite: 'none' as const,
+      partitioned: true,
     };
   }
 
