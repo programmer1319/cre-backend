@@ -32,7 +32,7 @@ export class AuthService {
     }
 
     this.issueTokens(user, res);
-
+    console.log('Logged in successfully');
     return {
       user: {
         id: user.id,
@@ -95,6 +95,7 @@ export class AuthService {
   logout(res: Response) {
     res.clearCookie('accessToken', this.cookieConfig);
     res.clearCookie('refreshToken', this.cookieConfig);
+    console.log('Logged out successfully');
     return { message: 'Logged out successfully' };
   }
 }
