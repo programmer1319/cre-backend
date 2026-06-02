@@ -2,17 +2,19 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Lead } from './leads.entity';
 import { Repository } from 'typeorm';
-import { NotificationService } from 'src/notification/notification.service';
 import { Property } from 'src/properties/property.entity';
+import { NotificationsGateway } from 'src/notification/notification.gateway';
+import { NotificationService } from 'src/notification/notification.service';
 
 @Injectable()
 export class LeadsService {
   constructor(
+    private notificationService: NotificationService,
+    private gateway: NotificationsGateway,
     @InjectRepository(Lead)
     private leadRepo: Repository<Lead>,
     @InjectRepository(Property)
     private propertyRepo: Repository<Property>,
-    private notificationsService: NotificationService,
   ) {}
 
   async create(data: any) {
@@ -22,16 +24,16 @@ export class LeadsService {
       },
       relations: ['owner'],
     });
-
     if (!property) {
       throw new Error('Property not found');
     }
-
-    await this.notificationsService.create(
+    const notification = await this.notificationService.create(
       property.owner.id,
       `New inquiry for ${property.title}`,
       'lead',
+      property.id,
     );
+    this.gateway.sendNotification(property.owner.id, notification);
 
     const lead = this.leadRepo.create({
       name: data.name,
@@ -39,7 +41,6 @@ export class LeadsService {
       message: data.message,
       property,
     });
-
     return this.leadRepo.save(lead);
   }
 

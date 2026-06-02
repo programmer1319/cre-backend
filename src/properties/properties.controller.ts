@@ -23,7 +23,6 @@ import { Roles } from 'src/users/roles.decorater';
 import { UserRole } from '../users/user-role.enum';
 import { FilterPropertyDto } from './filter-property.dto';
 import { MapBoundsDto } from './map-bounds.dto';
-import type { Express } from 'express';
 
 const uploadInterceptor = () =>
   UseInterceptors(
@@ -62,7 +61,7 @@ export class PropertiesController {
       bathrooms: Number(body.bathrooms),
       latitude: Number(body.latitude),
       longitude: Number(body.longitude),
-      images: files?.map((f) => `${this.baseUrl}/uploads/${f.filename}`) ?? [],
+      images: files?.map((f) => f.filename) ?? [],
     };
   }
 

@@ -18,9 +18,9 @@ export class AuthService {
   private get cookieConfig() {
     return {
       httpOnly: true,
-      secure: true,
+      secure: false,
       sameSite: 'lax' as const,
-      domain: '.hostingersite.com',
+      domain: '.local.test',
     };
   }
 

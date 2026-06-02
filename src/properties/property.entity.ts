@@ -50,7 +50,11 @@ export class Property {
 
   @Column('simple-array', { nullable: true })
   images!: string[];
+  get imageUrls(): string[] {
+    const baseUrl = process.env.BASE_URL;
 
+    return this.images?.map((img) => `${baseUrl}/uploads/${img}`) ?? [];
+  }
   @Column({ default: 0 })
   area!: number;
 

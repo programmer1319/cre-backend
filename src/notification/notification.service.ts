@@ -10,9 +10,15 @@ export class NotificationService {
     private repo: Repository<Notification>,
   ) {}
 
-  create(userId: number, message: string, type: Notification['type']) {
+  create(
+    userId: number,
+    message: string,
+    type: Notification['type'],
+    propertyId?: number,
+  ) {
     return this.repo.save({
       user: { id: userId },
+      property: propertyId ? { id: propertyId } : undefined,
       message,
       type,
     });
@@ -27,5 +33,9 @@ export class NotificationService {
 
   markAsRead(id: number) {
     return this.repo.update(id, { read: true });
+  }
+
+  markAsUnread(id: number) {
+    return this.repo.update(id, { read: false });
   }
 }

@@ -10,6 +10,7 @@ import { FavouritesModule } from './favourites/favourites.module';
 import { JwtModule } from '@nestjs/jwt';
 import { LeadsModule } from './leads/leads.module';
 import { NotificationModule } from './notification/notification.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -35,6 +36,7 @@ import { NotificationModule } from './notification/notification.module';
     FavouritesModule,
     LeadsModule,
     NotificationModule,
+    AnalyticsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

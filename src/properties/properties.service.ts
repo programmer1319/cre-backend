@@ -8,7 +8,7 @@ import { Repository } from 'typeorm';
 import { Property } from './property.entity';
 import { FilterPropertyDto } from './filter-property.dto';
 import { MapBoundsDto } from './map-bounds.dto';
-import type { Express } from 'express';
+import { ConfigService } from '@nestjs/config';
 
 const LIST_COLUMNS = [
   'property.id',
@@ -31,6 +31,8 @@ const LIST_COLUMNS = [
 @Injectable()
 export class PropertiesService {
   constructor(
+    private configService: ConfigService,
+
     @InjectRepository(Property)
     private propertyRepo: Repository<Property>,
   ) {}
@@ -103,8 +105,10 @@ export class PropertiesService {
 
     const [data, total] = await qb.getManyAndCount();
 
+    const transformed = data.map((p) => this.appendImageUrls(p));
+
     return {
-      data,
+      data: transformed,
       total,
       page,
       limit,
@@ -122,7 +126,7 @@ export class PropertiesService {
       .getOne();
 
     if (!property) throw new NotFoundException('Property not found');
-    return property;
+    return this.appendImageUrls(property);
   }
 
   // ── UPDATE (owner or admin only) ─────────────────────────
@@ -148,9 +152,7 @@ export class PropertiesService {
         : [body.keepImages]
       : [];
 
-    const newImages = files?.length
-      ? files.map((f) => `${baseUrl}/uploads/${f.filename}`)
-      : [];
+    const newImages = files?.length ? files.map((f) => f.filename) : [];
 
     const images = [...kept, ...newImages];
     const { keepImages, ...rest } = body;
@@ -179,7 +181,7 @@ export class PropertiesService {
 
   // ── MAP BOUNDS ───────────────────────────────────────────
   async findWithinBounds(bounds: MapBoundsDto) {
-    return this.propertyRepo
+    const properties = await this.propertyRepo
       .createQueryBuilder('property')
       .leftJoin('property.owner', 'owner')
       .select(LIST_COLUMNS)
@@ -192,6 +194,8 @@ export class PropertiesService {
         east: bounds.east,
       })
       .getMany();
+
+    return properties.map((p) => this.appendImageUrls(p));
   }
 
   // ── PRIVATE ──────────────────────────────────────────────
@@ -205,5 +209,14 @@ export class PropertiesService {
     if (!isOwner && !isAdmin) {
       throw new ForbiddenException('You do not own this property');
     }
+  }
+
+  private appendImageUrls(property: Property) {
+    const baseUrl = this.configService.get<string>('BASE_URL');
+
+    return {
+      ...property,
+      images: property.images?.map((img) => `${baseUrl}/uploads/${img}`) ?? [],
+    };
   }
 }

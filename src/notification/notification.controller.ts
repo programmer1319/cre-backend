@@ -10,13 +10,20 @@ export class NotificationController {
   @UseGuards(JwtGuard)
   @Get()
   findUserNotifications(@Req() req: Request & { user: User }) {
-    const userId = req.user.id;
-    return this.notificationService.findUserNotifications(Number(userId));
+    return this.notificationService.findUserNotifications(Number(req.user.id));
   }
 
+  /** Mark a single notification as READ */
   @UseGuards(JwtGuard)
-  @Patch(':id')
-  markAllNotificationsAsRead(@Param('id') id: number) {
+  @Patch(':id/read')
+  markAsRead(@Param('id') id: number) {
     return this.notificationService.markAsRead(Number(id));
+  }
+
+  /** Mark a single notification as UNREAD */
+  @UseGuards(JwtGuard)
+  @Patch(':id/unread')
+  markAsUnread(@Param('id') id: number) {
+    return this.notificationService.markAsUnread(Number(id));
   }
 }
