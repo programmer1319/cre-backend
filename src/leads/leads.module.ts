@@ -5,8 +5,9 @@ import { TypeOrmModule } from 'node_modules/@nestjs/typeorm';
 import { Lead } from './leads.entity';
 import { Property } from 'src/properties/property.entity';
 import { NotificationModule } from 'src/notification/notification.module';
+import { SettingsModule } from 'src/settings/settings.module';
 @Module({
-  imports: [TypeOrmModule.forFeature([Lead, Property]), NotificationModule],
+  imports: [TypeOrmModule.forFeature([Lead, Property]), NotificationModule, SettingsModule],
   controllers: [LeadsController],
   providers: [LeadsService],
 })

@@ -14,9 +14,6 @@ export class Notification {
   id!: number;
 
   @Column()
-  userId!: number;
-
-  @Column()
   type!: 'lead' | 'property' | 'system';
 
   @Column()
@@ -30,8 +27,14 @@ export class Notification {
   })
   user!: User;
 
-  @ManyToOne(() => Property, { onDelete: 'CASCADE' })
-  property!: Property;
+  @Column()
+  userId!: number;
+
+  @ManyToOne(() => Property, { nullable: true, onDelete: 'SET NULL' })
+  property!: Property | null;
+
+  @Column({ nullable: true })
+  propertyId!: number | null;
 
   @CreateDateColumn()
   createdAt!: Date;

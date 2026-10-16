@@ -16,14 +16,14 @@ export class NotificationController {
   /** Mark a single notification as READ */
   @UseGuards(JwtGuard)
   @Patch(':id/read')
-  markAsRead(@Param('id') id: number) {
-    return this.notificationService.markAsRead(Number(id));
+  markAsRead(@Param('id') id: number, @Req() req: Request & { user: User }) {
+    return this.notificationService.markAsRead(Number(id), Number(req.user.id));
   }
 
   /** Mark a single notification as UNREAD */
   @UseGuards(JwtGuard)
   @Patch(':id/unread')
-  markAsUnread(@Param('id') id: number) {
-    return this.notificationService.markAsUnread(Number(id));
+  markAsUnread(@Param('id') id: number, @Req() req: Request & { user: User }) {
+    return this.notificationService.markAsUnread(Number(id), Number(req.user.id));
   }
 }

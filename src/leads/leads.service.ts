@@ -1,15 +1,18 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Lead } from './leads.entity';
 import { Repository } from 'typeorm';
 import { Property } from 'src/properties/property.entity';
 import { NotificationsGateway } from 'src/notification/notification.gateway';
 import { NotificationService } from 'src/notification/notification.service';
+import { CreateLeadDto } from './create-lead.dto';
+import { SettingsService } from 'src/settings/settings.service';
 
 @Injectable()
 export class LeadsService {
   constructor(
     private notificationService: NotificationService,
+    private settingsService: SettingsService,
     private gateway: NotificationsGateway,
     @InjectRepository(Lead)
     private leadRepo: Repository<Lead>,
@@ -17,7 +20,7 @@ export class LeadsService {
     private propertyRepo: Repository<Property>,
   ) {}
 
-  async create(data: any) {
+  async create(data: CreateLeadDto) {
     const property = await this.propertyRepo.findOne({
       where: {
         id: Number(data.property),
@@ -25,7 +28,7 @@ export class LeadsService {
       relations: ['owner'],
     });
     if (!property) {
-      throw new Error('Property not found');
+      throw new NotFoundException('Property not found');
     }
     const notification = await this.notificationService.create(
       property.owner.id,
@@ -33,7 +36,10 @@ export class LeadsService {
       'lead',
       property.id,
     );
-    this.gateway.sendNotification(property.owner.id, notification);
+    const settings = await this.settingsService.findForUser(property.owner.id);
+    if (settings.pushNewLeads) {
+      this.gateway.sendNotification(property.owner.id, notification);
+    }
 
     const lead = this.leadRepo.create({
       name: data.name,

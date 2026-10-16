@@ -40,10 +40,10 @@ export class Property {
   bathrooms!: number;
 
   @Column('decimal', { precision: 10, scale: 6, nullable: true })
-  latitude!: number;
+  latitude!: number | null;
 
   @Column('decimal', { precision: 10, scale: 6, nullable: true })
-  longitude!: number;
+  longitude!: number | null;
 
   @Column()
   location!: string;

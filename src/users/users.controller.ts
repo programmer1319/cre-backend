@@ -8,12 +8,17 @@ import {
   Req,
   UnauthorizedException,
   UseGuards,
+  Patch,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import type { Response, Request } from 'express';
 import { AuthService } from 'src/auth/auth.service';
 import { JwtGuard } from 'src/auth/jwt/jwt.guard';
+import { RolesGuard } from 'src/guards/roles.guard';
+import { Roles } from './roles.decorater';
+import { UserRole } from './user-role.enum';
+import { ChangePasswordDto } from './dto/change-password.dto';
 @Controller('user')
 export class UsersController {
   constructor(
@@ -35,7 +40,7 @@ export class UsersController {
   }
 
   @Post('refresh')
-  refresh(@Req() req: Request, @Res() res: Response) {
+  refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const refreshToken = req.cookies['refreshToken'] as string;
     if (typeof refreshToken !== 'string') {
       throw new UnauthorizedException('Refresh token missing');
@@ -49,6 +54,8 @@ export class UsersController {
     return this.usersService.create(body);
   }
 
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
   @Get()
   async getUsers() {
     return this.usersService.findAll();
@@ -59,6 +66,18 @@ export class UsersController {
   me(@Req() req: Request) {
     return req.user;
   }
+
+  @UseGuards(JwtGuard)
+  @Patch('security/password')
+  changePassword(@Req() req: Request & { user: { id: number } }, @Body() body: ChangePasswordDto) {
+    return this.usersService.changePassword(
+      Number(req.user.id),
+      body.currentPassword,
+      body.newPassword,
+    );
+  }
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.usersService.findOne(id);

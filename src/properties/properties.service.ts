@@ -40,7 +40,13 @@ export class PropertiesService {
   // ── CREATE ───────────────────────────────────────────────
   async create(data: Partial<Property>) {
     const property = this.propertyRepo.create(data);
-    return this.propertyRepo.save(property);
+    const saved = await this.propertyRepo.save(property);
+    return this.findOne(String(saved.id));
+  }
+
+  async findFeatured() {
+    const result = await this.findAll({ page: '1', limit: '6', sort: 'latest' });
+    return result.data;
   }
 
   // ── LIST (public + my-properties) ────────────────────────
@@ -134,7 +140,6 @@ export class PropertiesService {
     id: number,
     body: any,
     files: Express.Multer.File[],
-    baseUrl: string,
     requestingUser: { id: number; role: string },
   ) {
     const existing = await this.propertyRepo.findOne({
@@ -146,22 +151,34 @@ export class PropertiesService {
 
     this.assertOwnerOrAdmin(existing, requestingUser);
 
-    const kept: string[] = body.keepImages
+    const keptUrls: string[] = body.keepImages
       ? Array.isArray(body.keepImages)
         ? body.keepImages
         : [body.keepImages]
       : [];
+    const kept = keptUrls.map((value) => {
+      try {
+        return decodeURIComponent(new URL(value, 'http://local').pathname.split('/').pop() ?? '');
+      } catch {
+        return value.split('/').pop() ?? value;
+      }
+    }).filter(Boolean);
 
     const newImages = files?.length ? files.map((f) => f.filename) : [];
 
     const images = [...kept, ...newImages];
-    const { keepImages, ...rest } = body;
+    const { keepImages, ...raw } = body;
+    const numeric = ['price', 'area', 'bedrooms', 'bathrooms', 'latitude', 'longitude'];
+    const rest = Object.fromEntries(
+      Object.entries(raw).map(([key, value]) => [key, numeric.includes(key) ? Number(value) : value]),
+    );
 
-    return this.propertyRepo.save({
+    await this.propertyRepo.save({
       ...existing,
       ...rest,
       images: images.length ? images : existing.images,
     });
+    return this.findOne(String(id));
   }
 
   // ── DELETE (owner or admin only) ─────────────────────────
@@ -203,7 +220,7 @@ export class PropertiesService {
     property: Property,
     user: { id: number; role: string },
   ) {
-    const isOwner = property.owner?.id === user.id;
+    const isOwner = Number(property.owner?.id) === Number(user.id);
     const isAdmin = user.role === 'admin';
 
     if (!isOwner && !isAdmin) {
@@ -212,11 +229,11 @@ export class PropertiesService {
   }
 
   private appendImageUrls(property: Property) {
-    const baseUrl = this.configService.get<string>('BASE_URL');
+    const baseUrl = (this.configService.get<string>('BASE_URL') ?? 'http://api.local.test:3000').replace(/\/$/, '');
 
     return {
       ...property,
-      images: property.images?.map((img) => `${baseUrl}/uploads/${img}`) ?? [],
+      images: property.images?.map((img) => /^https?:\/\//.test(img) ? img : `${baseUrl}/uploads/${img}`) ?? [],
     };
   }
 }

@@ -7,18 +7,17 @@ import { AuthModule } from './auth/auth.module';
 import { PropertiesModule } from './properties/properties.module';
 import { ConfigModule } from '@nestjs/config';
 import { FavouritesModule } from './favourites/favourites.module';
-import { JwtModule } from '@nestjs/jwt';
 import { LeadsModule } from './leads/leads.module';
 import { NotificationModule } from './notification/notification.module';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { PagesModule } from './pages/pages.module';
+import { MediaModule } from './media/media.module';
+import { SectionsModule } from './sections/sections.module';
+import { SettingsModule } from './settings/settings.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-    }),
-    JwtModule.register({
-      secret: process.env.JWT_SECRET,
-      signOptions: { expiresIn: '1d' },
     }),
     TypeOrmModule.forRoot({
       type: 'mysql',
@@ -28,7 +27,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
       password: process.env.DB_PASS ?? 'admin',
       database: process.env.DB_NAME ?? 'real_estate',
       autoLoadEntities: true,
-      synchronize: true,
+      synchronize: process.env.NODE_ENV !== 'production',
     }),
     UsersModule,
     AuthModule,
@@ -37,7 +36,12 @@ import { AnalyticsModule } from './analytics/analytics.module';
     LeadsModule,
     NotificationModule,
     AnalyticsModule,
+    PagesModule,
+    MediaModule,
+    SectionsModule,
+    SettingsModule,
   ],
+  // CacheModule.register({ ttl: 300, max: 100 }),
   controllers: [AppController],
   providers: [AppService],
 })

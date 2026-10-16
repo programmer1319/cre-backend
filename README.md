@@ -21,15 +21,44 @@
   <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
   [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
 
-## Description
+## CRE Portfolio API
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+NestJS API for the CRE Portfolio Angular application. It provides cookie-based authentication, property search and management, favourites, enquiries, notifications, dashboard analytics, media uploads, and page content management.
+
+All HTTP routes are prefixed with `/api`. Uploaded media is served from `/uploads`.
 
 ## Project setup
 
 ```bash
 $ npm install
 ```
+
+## Database migrations
+
+Apply pending schema changes after configuring `.env` and before starting the API:
+
+```bash
+npm run migration:run
+```
+
+The command is safe to run during later deployments; TypeORM records completed migrations in the
+`typeorm_migrations` table and only applies new ones.
+
+Create a `.env` file with the following values (do not commit secrets):
+
+```dotenv
+DB_HOST=localhost
+DB_USER=root
+DB_PASS=admin
+DB_NAME=real_estate
+JWT_SECRET=replace-with-a-long-random-secret
+BASE_URL=http://api.local.test:3000
+PORT=3000
+HOST=0.0.0.0
+CORS_ORIGINS=http://localhost:4200,http://app.local.test:4200
+```
+
+The database schema is synchronized automatically in development. Use migrations and disable `synchronize` before production rollout.
 
 ## Compile and run the project
 

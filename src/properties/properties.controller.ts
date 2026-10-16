@@ -13,9 +13,6 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname } from 'path';
-import { ConfigService } from '@nestjs/config';
 import { PropertiesService } from './properties.service';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
 import { RolesGuard } from 'src/guards/roles.guard';
@@ -23,32 +20,19 @@ import { Roles } from 'src/users/roles.decorater';
 import { UserRole } from '../users/user-role.enum';
 import { FilterPropertyDto } from './filter-property.dto';
 import { MapBoundsDto } from './map-bounds.dto';
+import { PropertyWriteDto } from './property-write.dto';
+import { multerConfig } from 'src/config/upload.config';
 
 const uploadInterceptor = () =>
   UseInterceptors(
-    FilesInterceptor('images', 10, {
-      storage: diskStorage({
-        destination: './uploads',
-        filename: (_, file, cb) => {
-          const name = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-          cb(null, name + extname(file.originalname));
-        },
-      }),
-    }),
+    FilesInterceptor('images', 10, multerConfig),
   );
 
 @Controller('properties')
 export class PropertiesController {
-  constructor(
-    private propertyService: PropertiesService,
-    private configService: ConfigService,
-  ) {}
+  constructor(private propertyService: PropertiesService) {}
 
-  private get baseUrl() {
-    return this.configService.get<string>('BASE_URL')!;
-  }
-
-  private transform(body: any, files: Express.Multer.File[]) {
+  private transform(body: PropertyWriteDto, files: Express.Multer.File[]) {
     return {
       title: body.title,
       description: body.description,
@@ -71,9 +55,14 @@ export class PropertiesController {
     return this.propertyService.findAll(query);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.propertyService.findOne(id);
+  @Get('featured')
+  getFeatured() {
+    return this.propertyService.findFeatured();
+  }
+
+  @Get(':slug')
+  findOne(@Param('slug') slug: string) {
+    return this.propertyService.findOne(slug);
   }
 
   @Post('bounds')
@@ -88,7 +77,7 @@ export class PropertiesController {
   @uploadInterceptor()
   create(
     @Req() req: any,
-    @Body() body: any,
+    @Body() body: PropertyWriteDto,
     @UploadedFiles() files: Express.Multer.File[],
   ) {
     return this.propertyService.create({
@@ -103,7 +92,7 @@ export class PropertiesController {
   @uploadInterceptor()
   update(
     @Param('id') id: number,
-    @Body() body: any,
+    @Body() body: PropertyWriteDto,
     @UploadedFiles() files: Express.Multer.File[],
     @Req() req: any,
   ) {
@@ -111,7 +100,6 @@ export class PropertiesController {
       id,
       body,
       files,
-      this.baseUrl,
       req.user, // ownership check is inside the service
     );
   }

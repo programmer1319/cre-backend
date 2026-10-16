@@ -20,34 +20,39 @@ export class AnalyticsService {
   ) {}
 
   async stats() {
-    const properties = await this.propertyRepo.count();
-    const leads = await this.leadRepo.count();
-    const users = await this.userRepo.count();
+    const [properties, leads, users, revenueRow] = await Promise.all([
+      this.propertyRepo.count(),
+      this.leadRepo.count(),
+      this.userRepo.count(),
+      this.propertyRepo.createQueryBuilder('property').select('COALESCE(SUM(property.price), 0)', 'revenue').getRawOne<{ revenue: string }>(),
+    ]);
 
     return {
       properties,
       leads,
       users,
-      revenue: 125000,
+      revenue: Number(revenueRow?.revenue ?? 0),
     };
   }
 
   async revenue() {
-    return [
-      { month: 'Jan', revenue: 12000 },
-      { month: 'Feb', revenue: 18000 },
-      { month: 'Mar', revenue: 22000 },
-      { month: 'Apr', revenue: 31000 },
-      { month: 'May', revenue: 45000 },
-    ];
+    return this.propertyRepo.createQueryBuilder('property')
+      .select("DATE_FORMAT(property.createdAt, '%Y-%m')", 'month')
+      .addSelect('SUM(property.price)', 'revenue')
+      .where('property.createdAt >= DATE_SUB(CURRENT_DATE, INTERVAL 6 MONTH)')
+      .groupBy("DATE_FORMAT(property.createdAt, '%Y-%m')")
+      .orderBy('month', 'ASC')
+      .getRawMany();
   }
 
   async leads() {
-    return [
-      { month: 'Jan', leads: 20 },
-      { month: 'Feb', leads: 35 },
-      { month: 'Mar', leads: 55 },
-      { month: 'Apr', leads: 80 },
-    ];
+    const rows = await this.leadRepo.createQueryBuilder('lead')
+      .select("DATE_FORMAT(lead.createdAt, '%Y-%m')", 'month')
+      .addSelect('COUNT(*)', 'leads')
+      .where('lead.createdAt >= DATE_SUB(CURRENT_DATE, INTERVAL 6 MONTH)')
+      .groupBy("DATE_FORMAT(lead.createdAt, '%Y-%m')")
+      .orderBy('month', 'ASC')
+      .getRawMany<{ month: string; leads: string }>();
+    return rows.map((row) => ({ month: row.month, leads: Number(row.leads) }));
   }
 }

@@ -1,0 +1,59 @@
+<section class="settings-page">
+  <header><p class="cre-kicker">Workspace</p><h1>Settings</h1><p>Manage your account and portfolio preferences.</p></header>
+  <div class="settings-grid">
+    <nav aria-label="Settings sections">
+      <button type="button" [class.active]="active() === 'profile'" (click)="select('profile')"><i class="pi pi-user"></i>Profile</button>
+      <button type="button" [class.active]="active() === 'notifications'" (click)="select('notifications')"><i class="pi pi-bell"></i>Notifications</button>
+      <button type="button" [class.active]="active() === 'security'" (click)="select('security')"><i class="pi pi-shield"></i>Security</button>
+      <button type="button" [class.active]="active() === 'appearance'" (click)="select('appearance')"><i class="pi pi-palette"></i>Appearance</button>
+    </nav>
+
+    <section class="settings-panel" [attr.aria-busy]="loading()">
+      @if (loading()) {
+        <div class="settings-state"><i class="pi pi-spin pi-spinner"></i><p>Loading settings…</p></div>
+      } @else {
+        @if (error()) { <p class="settings-alert error" role="alert">{{ error() }}</p> }
+        @if (message()) { <p class="settings-alert success" role="status">{{ message() }}</p> }
+
+        @switch (active()) {
+          @case ('profile') {
+            <div class="profile-row"><span>{{ auth.user()?.name?.charAt(0) || 'A' }}</span><div><strong>{{ auth.user()?.name || 'Portfolio user' }}</strong><p>{{ auth.user()?.email }}</p></div></div>
+            <div class="settings-copy"><h2>Profile</h2><p>Your identity is managed by your account. Notification, security, and appearance controls are available from this page.</p></div>
+          }
+          @case ('notifications') {
+            <header class="panel-heading"><h2>Notifications</h2><p>Choose how you receive portfolio activity and enquiry updates.</p></header>
+            <form [formGroup]="notificationsForm" (ngSubmit)="saveNotifications()">
+              <label class="preference-row"><span><strong>New enquiry emails</strong><small>Email me when a property receives an enquiry.</small></span><input type="checkbox" formControlName="emailNewLeads"></label>
+              <label class="preference-row"><span><strong>Live notifications</strong><small>Show new enquiry notifications in the dashboard.</small></span><input type="checkbox" formControlName="pushNewLeads"></label>
+              <label class="preference-row"><span><strong>Weekly portfolio digest</strong><small>Receive a weekly performance and activity summary.</small></span><input type="checkbox" formControlName="weeklyDigest"></label>
+              <div class="form-actions"><button class="cre-button" [disabled]="saving()">{{ saving() ? 'Saving…' : 'Save preferences' }}</button></div>
+            </form>
+          }
+          @case ('security') {
+            <header class="panel-heading"><h2>Security</h2><p>Use a strong password you do not use for another account.</p></header>
+            <form class="security-form" [formGroup]="securityForm" (ngSubmit)="changePassword()">
+              <label><span class="cre-label">Current password</span><input class="cre-field" type="password" formControlName="currentPassword" autocomplete="current-password"></label>
+              <label><span class="cre-label">New password</span><input class="cre-field" type="password" formControlName="newPassword" autocomplete="new-password"><small>At least 8 characters with upper-case, lower-case, and a number.</small></label>
+              <label><span class="cre-label">Confirm new password</span><input class="cre-field" type="password" formControlName="confirmPassword" autocomplete="new-password"></label>
+              @if (securityForm.hasError('mismatch') && securityForm.get('confirmPassword')?.touched) { <p class="field-error" role="alert">Passwords do not match.</p> }
+              <div class="form-actions"><button class="cre-button" [disabled]="securityForm.invalid || saving()">{{ saving() ? 'Updating…' : 'Update password' }}</button></div>
+            </form>
+          }
+          @case ('appearance') {
+            <header class="panel-heading"><h2>Appearance</h2><p>Adjust the dashboard theme, density, and motion.</p></header>
+            <form [formGroup]="appearanceForm" (ngSubmit)="saveAppearance()">
+              <fieldset class="theme-options"><legend>Theme</legend>
+                <label><input type="radio" formControlName="theme" value="light"><span><i class="pi pi-sun"></i>Light</span></label>
+                <label><input type="radio" formControlName="theme" value="dark"><span><i class="pi pi-moon"></i>Dark</span></label>
+                <label><input type="radio" formControlName="theme" value="system"><span><i class="pi pi-desktop"></i>System</span></label>
+              </fieldset>
+              <label class="preference-row"><span><strong>Compact density</strong><small>Reduce spacing in dashboard tables and panels.</small></span><input type="checkbox" formControlName="compactMode"></label>
+              <label class="preference-row"><span><strong>Reduce motion</strong><small>Limit non-essential transitions and movement.</small></span><input type="checkbox" formControlName="reducedMotion"></label>
+              <div class="form-actions"><button class="cre-button" [disabled]="saving()">{{ saving() ? 'Saving…' : 'Save appearance' }}</button></div>
+            </form>
+          }
+        }
+      }
+    </section>
+  </div>
+</section>

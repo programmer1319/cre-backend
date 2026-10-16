@@ -16,16 +16,19 @@ export class AuthService {
   ) {}
 
   private get cookieConfig() {
+    const production = process.env.NODE_ENV === 'production';
     return {
       httpOnly: true,
-      secure: false,
-      sameSite: 'lax' as const,
-      domain: '.local.test',
+      secure: production,
+      sameSite: production ? ('none' as const) : ('lax' as const),
+      path: '/',
     };
   }
 
   async login(email: string, password: string, res: Response) {
-    const user = await this.userRepository.findOne({ where: { email } });
+    const user = await this.userRepository.findOne({
+      where: { email: email.trim().toLowerCase() },
+    });
 
     if (!user || !(await bcrypt.compare(password, user.password))) {
       throw new UnauthorizedException('Invalid email or password');
@@ -61,15 +64,17 @@ export class AuthService {
 
   }
 
-  refreshToken(refreshToken: string, res: Response) {
+  async refreshToken(refreshToken: string, res: Response) {
     if (!refreshToken)
       throw new UnauthorizedException('No refresh token provided');
 
     try {
       const payload = this.jwtService.verify<JwtPayload>(refreshToken);
+      const user = await this.userRepository.findOne({ where: { id: payload.sub } });
+      if (!user) throw new UnauthorizedException('Account no longer exists');
 
       const newAccessToken = this.jwtService.sign(
-        { sub: payload.sub, email: payload.email, role: payload.role },
+        { sub: user.id, email: user.email, role: user.role },
         { expiresIn: '15m' },
       );
 

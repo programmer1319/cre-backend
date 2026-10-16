@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Notification } from './notification.entity';
@@ -17,7 +17,9 @@ export class NotificationService {
     propertyId?: number,
   ) {
     return this.repo.save({
+      userId,
       user: { id: userId },
+      propertyId: propertyId ?? null,
       property: propertyId ? { id: propertyId } : undefined,
       message,
       type,
@@ -31,11 +33,18 @@ export class NotificationService {
     });
   }
 
-  markAsRead(id: number) {
-    return this.repo.update(id, { read: true });
+  async markAsRead(id: number, userId: number) {
+    return this.setRead(id, userId, true);
   }
 
-  markAsUnread(id: number) {
-    return this.repo.update(id, { read: false });
+  async markAsUnread(id: number, userId: number) {
+    return this.setRead(id, userId, false);
+  }
+
+  private async setRead(id: number, userId: number, read: boolean) {
+    const notification = await this.repo.findOne({ where: { id, userId } });
+    if (!notification) throw new NotFoundException('Notification not found');
+    notification.read = read;
+    return this.repo.save(notification);
   }
 }

@@ -3,12 +3,14 @@ import {
   PrimaryGeneratedColumn,
   ManyToOne,
   CreateDateColumn,
+  Unique,
 } from 'typeorm';
 
 import { User } from 'src/users/user.entity';
 import { Property } from 'src/properties/property.entity';
 
 @Entity()
+@Unique(['user', 'property'])
 export class Favorite {
   @PrimaryGeneratedColumn()
   id!: number;
