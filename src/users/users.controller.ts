@@ -19,6 +19,11 @@ import { RolesGuard } from 'src/guards/roles.guard';
 import { Roles } from './roles.decorater';
 import { UserRole } from './user-role.enum';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
+import { RequestPasswordResetDto } from './dto/request-password-reset.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { LoginDto } from './dto/login.dto';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 @Controller('user')
 export class UsersController {
   constructor(
@@ -27,8 +32,9 @@ export class UsersController {
   ) {}
 
   @Post('login')
+  @UseGuards(ThrottlerGuard)
   login(
-    @Body() body: { email: string; password: string },
+    @Body() body: LoginDto,
     @Res({ passthrough: true }) res: Response,
   ) {
     return this.authService.login(body.email, body.password, res);
@@ -50,8 +56,24 @@ export class UsersController {
   }
 
   @Post()
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 4, ttl: 60_000 } })
   createUser(@Body() body: CreateUserDto) {
     return this.usersService.create(body);
+  }
+
+  @Post('forgot-password')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  forgotPassword(@Body() body: RequestPasswordResetDto) {
+    return this.usersService.requestPasswordReset(body.email);
+  }
+
+  @Post('reset-password')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  resetPassword(@Body() body: ResetPasswordDto) {
+    return this.usersService.resetPassword(body.token, body.password);
   }
 
   @UseGuards(JwtGuard, RolesGuard)
@@ -63,8 +85,14 @@ export class UsersController {
 
   @UseGuards(JwtGuard)
   @Get('me')
-  me(@Req() req: Request) {
-    return req.user;
+  me(@Req() req: Request & { user: { id: number } }) {
+    return this.usersService.findOne(String(req.user.id));
+  }
+
+  @UseGuards(JwtGuard)
+  @Patch('me')
+  updateProfile(@Req() req: Request & { user: { id: number } }, @Body() body: UpdateProfileDto) {
+    return this.usersService.updateProfile(Number(req.user.id), body);
   }
 
   @UseGuards(JwtGuard)

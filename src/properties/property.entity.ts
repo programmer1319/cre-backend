@@ -9,6 +9,23 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
+/**
+ * DECIMAL columns arrive from mysql2 as **strings**, not numbers.
+ *
+ * Without this transformer the API emits `"latitude": "40.712800"` and `"price": "500000.00"`,
+ * which contradicts the declared `number` type on both sides of the contract. The practical
+ * consequence was that every `typeof value === 'number'` coordinate check in the frontend map
+ * failed, so the map silently plotted nothing — the listings were there, the pins were not.
+ *
+ * Applied at the column rather than fixed in one query, so every read path agrees: the paged
+ * list, the detail record, the map viewport query and the pin feed.
+ */
+const decimalAsNumber = {
+  from: (value: string | number | null): number | null =>
+    value === null || value === undefined ? null : Number(value),
+  to: (value: number | null) => value,
+};
+
 @Entity()
 export class Property {
   @PrimaryGeneratedColumn()
@@ -21,7 +38,7 @@ export class Property {
   description!: string;
 
   @Index() // ← filtered + sorted
-  @Column('decimal', { precision: 12, scale: 2 })
+  @Column('decimal', { precision: 12, scale: 2, transformer: decimalAsNumber })
   price!: number;
 
   @Index() // ← filtered
@@ -39,10 +56,20 @@ export class Property {
   @Column({ default: 0 })
   bathrooms!: number;
 
-  @Column('decimal', { precision: 10, scale: 6, nullable: true })
+  @Column('decimal', {
+    precision: 10,
+    scale: 6,
+    nullable: true,
+    transformer: decimalAsNumber,
+  })
   latitude!: number | null;
 
-  @Column('decimal', { precision: 10, scale: 6, nullable: true })
+  @Column('decimal', {
+    precision: 10,
+    scale: 6,
+    nullable: true,
+    transformer: decimalAsNumber,
+  })
   longitude!: number | null;
 
   @Column()

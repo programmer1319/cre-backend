@@ -16,6 +16,9 @@ export class Lead {
   @Column()
   message!: string;
 
+  @Column({ type: 'enum', enum: ['new', 'contacted', 'qualified', 'closed'], default: 'new' })
+  status!: 'new' | 'contacted' | 'qualified' | 'closed';
+
   @ManyToOne(() => Property, { onDelete: 'CASCADE' })
   property!: Property;
 

@@ -18,21 +18,7 @@ export class PagesService {
   }
 
   findAll() {
-    return this.pageRepo.find({
-      relations: ['sections'],
-      order: { title: 'ASC', sections: { sortOrder: 'ASC' } },
-    });
-  }
-
-  async updatePage(slug: string, updatePageDto: UpdatePageDto) {
-    const page = await this.pageRepo.findOne({ where: { slug }, relations: ['sections'] });
-    if (!page) throw new NotFoundException(`Page '${slug}' not found`);
-    if (updatePageDto.title !== undefined) page.title = updatePageDto.title;
-    if (updatePageDto.metaTitle !== undefined) page.metaTitle = updatePageDto.metaTitle;
-    if (updatePageDto.metaDescription !== undefined)
-      page.metaDescription = updatePageDto.metaDescription;
-    if (updatePageDto.isActive !== undefined) page.isActive = updatePageDto.isActive;
-    return this.pageRepo.save(page);
+    return this.pageRepo.find({ order: { title: 'ASC' } });
   }
 
   async findOne(slug: string) {
@@ -73,6 +59,14 @@ export class PagesService {
     if (updatePageDto.isActive !== undefined) page.isActive = updatePageDto.isActive;
     await this.pageRepo.save(page);
     return this.findOne(slug);
+  }
+
+  async updatePage(slug: string, values: UpdatePageDto) {
+    const page = await this.pageRepo.findOne({ where: { slug } });
+    if (!page) throw new NotFoundException(`Page '${slug}' not found`);
+    const { slug: _ignoredSlug, ...safeValues } = values;
+    await this.pageRepo.save(this.pageRepo.merge(page, safeValues));
+    return this.pageRepo.findOne({ where: { id: page.id }, relations: ['sections'] });
   }
 
   async remove(slug: string) {

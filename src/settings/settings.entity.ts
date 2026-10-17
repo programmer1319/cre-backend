@@ -1,8 +1,6 @@
 import { Column, Entity, JoinColumn, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 import { User } from '../users/user.entity';
 
-export type AppearanceTheme = 'light' | 'dark' | 'system';
-
 @Entity('user_settings')
 export class UserSettings {
   @PrimaryGeneratedColumn()
@@ -23,9 +21,6 @@ export class UserSettings {
 
   @Column({ default: false })
   weeklyDigest!: boolean;
-
-  @Column({ type: 'enum', enum: ['light', 'dark', 'system'], default: 'system' })
-  theme!: AppearanceTheme;
 
   @Column({ default: false })
   compactMode!: boolean;

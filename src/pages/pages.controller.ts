@@ -45,8 +45,8 @@ export class PagesController {
   @Patch(':slug')
   @UseGuards(JwtGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
-  updatePage(@Param('slug') slug: string, @Body() updatePageDto: UpdatePageDto) {
-    return this.pagesService.updatePage(slug, updatePageDto);
+  updatePage(@Param('slug') slug: string, @Body() body: UpdatePageDto) {
+    return this.pagesService.updatePage(slug, body);
   }
 
   @Patch(':slug/sections/:sectionKey')

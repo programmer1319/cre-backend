@@ -1,9 +1,10 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { AnalyticsService } from './analytics.service';
 import { JwtGuard } from 'src/auth/jwt/jwt.guard';
 import { RolesGuard } from 'src/guards/roles.guard';
 import { Roles } from 'src/users/roles.decorater';
 import { UserRole } from 'src/users/user-role.enum';
+import { AnalyticsRangeDto } from './analytics-range.dto';
 
 @Controller('analytics')
 @UseGuards(JwtGuard, RolesGuard)
@@ -17,12 +18,17 @@ export class AnalyticsController {
   }
 
   @Get('revenue')
-  revenue() {
-    return this.analyticsService.revenue();
+  revenue(@Query() query: AnalyticsRangeDto) {
+    return this.analyticsService.revenue(Number(query.months ?? 6));
+  }
+
+  @Get('holdings')
+  holdings() {
+    return this.analyticsService.holdings();
   }
 
   @Get('leads')
-  leads() {
-    return this.analyticsService.leads();
+  leads(@Query() query: AnalyticsRangeDto) {
+    return this.analyticsService.leads(Number(query.months ?? 6));
   }
 }

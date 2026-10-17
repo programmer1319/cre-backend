@@ -48,7 +48,7 @@ export class AuthService {
     return this.jwtService.verify<JwtPayload>(token);
   }
   private issueTokens(user: User, res: Response) {
-    const payload = { sub: user.id, email: user.email, role: user.role };
+    const payload = { sub: user.id, email: user.email, role: user.role, ver: user.tokenVersion ?? 0 };
 
     const accessToken = this.jwtService.sign(payload, { expiresIn: '15m' });
     const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
@@ -72,9 +72,10 @@ export class AuthService {
       const payload = this.jwtService.verify<JwtPayload>(refreshToken);
       const user = await this.userRepository.findOne({ where: { id: payload.sub } });
       if (!user) throw new UnauthorizedException('Account no longer exists');
+      if ((payload.ver ?? 0) !== (user.tokenVersion ?? 0)) throw new UnauthorizedException('Session expired');
 
       const newAccessToken = this.jwtService.sign(
-        { sub: user.id, email: user.email, role: user.role },
+        { sub: user.id, email: user.email, role: user.role, ver: user.tokenVersion ?? 0 },
         { expiresIn: '15m' },
       );
 

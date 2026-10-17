@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { Media } from './entities/media.entity';
 import { Repository } from 'typeorm';
-import sharp from 'sharp/lib';
+import sharp from 'sharp';
 import { extname } from 'path';
 import { promises as fs } from 'fs';
 
@@ -36,7 +36,8 @@ export class MediaService {
   }
 
   async findAll(): Promise<Media[]> {
-    return this.repo.find({ order: { createdAt: 'DESC' } });
+    const media = await this.repo.find({ order: { createdAt: 'DESC' } });
+    return media.map((item) => this.withPublicUrl(item));
   }
 
   async remove(id: number) {
@@ -46,5 +47,17 @@ export class MediaService {
     const thumbName = `thumb_${media.filename.replace(extname(media.filename), '.webp')}`;
     await fs.unlink(`./uploads/thumbs/${thumbName}`).catch(() => {});
     return this.repo.remove(media);
+  }
+
+  async update(id: number, values: { altText?: string }) {
+    const media = await this.repo.findOne({ where: { id } });
+    if (!media) throw new NotFoundException('Media not found');
+    return this.withPublicUrl(await this.repo.save(this.repo.merge(media, values)));
+  }
+
+  private withPublicUrl(item: Media): Media {
+    const base = (process.env.BASE_URL ?? '').replace(/\/$/, '');
+    item.url = item.url.startsWith('http') ? item.url : `${base}${item.url}`;
+    return item;
   }
 }

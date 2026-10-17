@@ -35,24 +35,75 @@ export class AnalyticsService {
     };
   }
 
-  async revenue() {
-    return this.propertyRepo.createQueryBuilder('property')
-      .select("DATE_FORMAT(property.createdAt, '%Y-%m')", 'month')
-      .addSelect('SUM(property.price)', 'revenue')
-      .where('property.createdAt >= DATE_SUB(CURRENT_DATE, INTERVAL 6 MONTH)')
-      .groupBy("DATE_FORMAT(property.createdAt, '%Y-%m')")
-      .orderBy('month', 'ASC')
-      .getRawMany();
+  /**
+   * Portfolio composition by asset class.
+   *
+   * Lives in analytics rather than being derived on the client from a page of listings: the
+   * share of the portfolio has to be computed over every row, not over whichever page happens
+   * to be loaded.
+   */
+  async holdings() {
+    const rows = await this.propertyRepo
+      .createQueryBuilder('property')
+      .select('property.propertyType', 'type')
+      .addSelect('COUNT(property.id)', 'count')
+      .addSelect('COALESCE(SUM(property.price), 0)', 'value')
+      .where('property.propertyType IS NOT NULL')
+      .andWhere("property.propertyType <> ''")
+      .groupBy('property.propertyType')
+      .orderBy('count', 'DESC')
+      .getRawMany<{ type: string; count: string; value: string }>();
+
+    const total = rows.reduce((sum, row) => sum + Number(row.count), 0);
+
+    return rows.map((row) => ({
+      type: row.type,
+      count: Number(row.count),
+      value: Number(row.value),
+      share: total ? Math.round((Number(row.count) / total) * 100) : 0,
+    }));
   }
 
-  async leads() {
-    const rows = await this.leadRepo.createQueryBuilder('lead')
+  /**
+   * Monthly sums over a trailing window.
+   *
+   * `months` is clamped to an integer before it reaches the SQL. MySQL will not accept a bound
+   * parameter inside an `INTERVAL` literal, so the value is interpolated — safe only because
+   * `clampMonths` has already reduced it to an integer between 1 and 36.
+   */
+  async revenue(months = 6) {
+    const window = clampMonths(months);
+
+    const rows = await this.propertyRepo
+      .createQueryBuilder('property')
+      .select("DATE_FORMAT(property.createdAt, '%Y-%m')", 'month')
+      .addSelect('SUM(property.price)', 'revenue')
+      .where(`property.createdAt >= DATE_SUB(CURRENT_DATE, INTERVAL ${window} MONTH)`)
+      .groupBy("DATE_FORMAT(property.createdAt, '%Y-%m')")
+      .orderBy('month', 'ASC')
+      .getRawMany<{ month: string; revenue: string }>();
+
+    return rows.map((row) => ({ month: row.month, revenue: Number(row.revenue) }));
+  }
+
+  async leads(months = 6) {
+    const window = clampMonths(months);
+
+    const rows = await this.leadRepo
+      .createQueryBuilder('lead')
       .select("DATE_FORMAT(lead.createdAt, '%Y-%m')", 'month')
       .addSelect('COUNT(*)', 'leads')
-      .where('lead.createdAt >= DATE_SUB(CURRENT_DATE, INTERVAL 6 MONTH)')
+      .where(`lead.createdAt >= DATE_SUB(CURRENT_DATE, INTERVAL ${window} MONTH)`)
       .groupBy("DATE_FORMAT(lead.createdAt, '%Y-%m')")
       .orderBy('month', 'ASC')
       .getRawMany<{ month: string; leads: string }>();
+
     return rows.map((row) => ({ month: row.month, leads: Number(row.leads) }));
   }
+}
+
+/** Keeps the trailing window an integer between 1 and 36 months. */
+function clampMonths(months: number): number {
+  const n = Math.trunc(Number(months));
+  return Number.isFinite(n) && n > 0 ? Math.min(36, n) : 6;
 }

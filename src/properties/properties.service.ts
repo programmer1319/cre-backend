@@ -4,11 +4,36 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, SelectQueryBuilder } from 'typeorm';
 import { Property } from './property.entity';
 import { FilterPropertyDto } from './filter-property.dto';
 import { MapBoundsDto } from './map-bounds.dto';
 import { ConfigService } from '@nestjs/config';
+
+/** Hard ceiling on pins returned for one map viewport. */
+const MAP_RESULT_LIMIT = 300;
+
+/**
+ * Ceiling on the unpaginated pin set.
+ *
+ * A pin is ~120 bytes, so 5 000 is well under a megabyte — but a map cannot usefully render more
+ * than a few hundred markers anyway, and this stops a single request from streaming the whole
+ * table if the portfolio ever grows past what the UI can draw. When this limit starts biting,
+ * clustering or server-side tile aggregation is the answer, not a bigger number.
+ */
+const PIN_LIMIT = 5000;
+
+/** The only columns a map marker needs: no images, no owner, no description. */
+const PIN_COLUMNS = [
+  'property.id',
+  'property.title',
+  'property.price',
+  'property.propertyType',
+  'property.city',
+  'property.location',
+  'property.latitude',
+  'property.longitude',
+];
 
 const LIST_COLUMNS = [
   'property.id',
@@ -21,6 +46,10 @@ const LIST_COLUMNS = [
   'property.bathrooms',
   'property.area',
   'property.images',
+  // Coordinates ship with every list row so the map beside the list can plot the same
+  // result set without a second round trip.
+  'property.latitude',
+  'property.longitude',
   'property.createdAt',
   // owner fields — safe subset only
   'owner.id',
@@ -49,6 +78,56 @@ export class PropertiesService {
     return result.data;
   }
 
+  // ── FACETS ───────────────────────────────────────────────
+  /**
+   * Distinct values behind the listing filters, plus the real price envelope.
+   *
+   * Without this the UI can only offer the values present on the page it happens to have
+   * loaded, so a type that exists on page 4 is unreachable from page 1. Cheap enough to call
+   * once per listing visit: three grouped scans over an indexed table.
+   */
+  async findFacets() {
+    const [types, cities, bounds] = await Promise.all([
+      this.propertyRepo
+        .createQueryBuilder('property')
+        .select('property.propertyType', 'value')
+        .addSelect('COUNT(property.id)', 'count')
+        .where('property.propertyType IS NOT NULL')
+        .andWhere("property.propertyType <> ''")
+        .groupBy('property.propertyType')
+        .orderBy('property.propertyType', 'ASC')
+        .getRawMany<{ value: string; count: string }>(),
+
+      this.propertyRepo
+        .createQueryBuilder('property')
+        .select('property.city', 'value')
+        .addSelect('COUNT(property.id)', 'count')
+        .where('property.city IS NOT NULL')
+        .andWhere("property.city <> ''")
+        .groupBy('property.city')
+        .orderBy('property.city', 'ASC')
+        .getRawMany<{ value: string; count: string }>(),
+
+      this.propertyRepo
+        .createQueryBuilder('property')
+        .select('MIN(property.price)', 'min')
+        .addSelect('MAX(property.price)', 'max')
+        .getRawOne<{ min: string | null; max: string | null }>(),
+    ]);
+
+    const toFacet = (rows: { value: string; count: string }[]) =>
+      rows.map((r) => ({ value: r.value, count: Number(r.count) }));
+
+    return {
+      propertyTypes: toFacet(types),
+      cities: toFacet(cities),
+      priceRange: {
+        min: Number(bounds?.min ?? 0),
+        max: Number(bounds?.max ?? 0),
+      },
+    };
+  }
+
   // ── LIST (public + my-properties) ────────────────────────
   async findAll(query: FilterPropertyDto) {
     const page = Math.max(1, Number(query.page || 1));
@@ -64,48 +143,8 @@ export class PropertiesService {
       qb.andWhere('owner.id = :ownerId', { ownerId: Number(query.ownerId) });
     }
 
-    if (query.search?.trim()) {
-      qb.andWhere(
-        `(LOWER(property.title)        LIKE LOWER(:s)
-          OR LOWER(property.city)       LIKE LOWER(:s)
-          OR LOWER(property.propertyType) LIKE LOWER(:s))`,
-        { s: `%${query.search.trim()}%` },
-      );
-    }
-
-    if (query.city?.trim()) {
-      qb.andWhere('LOWER(property.city) LIKE LOWER(:city)', {
-        city: `%${query.city.trim()}%`,
-      });
-    }
-
-    if (query.propertyType) {
-      qb.andWhere('property.propertyType = :pt', { pt: query.propertyType });
-    }
-
-    if (query.minPrice) {
-      qb.andWhere('property.price >= :min', { min: Number(query.minPrice) });
-    }
-
-    if (query.maxPrice) {
-      qb.andWhere('property.price <= :max', { max: Number(query.maxPrice) });
-    }
-
-    if (query.bedrooms) {
-      qb.andWhere('property.bedrooms >= :bed', { bed: Number(query.bedrooms) });
-    }
-
-    switch (query.sort) {
-      case 'price_asc':
-        qb.orderBy('property.price', 'ASC');
-        break;
-      case 'price_desc':
-        qb.orderBy('property.price', 'DESC');
-        break;
-      default:
-        qb.orderBy('property.createdAt', 'DESC');
-        break;
-    }
+    this.applyFilters(qb, query);
+    this.applySort(qb, query.sort);
 
     qb.skip((page - 1) * limit).take(limit);
 
@@ -197,8 +236,56 @@ export class PropertiesService {
   }
 
   // ── MAP BOUNDS ───────────────────────────────────────────
+  /**
+   * Every listing matching the filters, as map markers, with no pagination.
+   *
+   * This is deliberately separate from `findAll`: the list is paged because a visitor reads it a
+   * page at a time, but a map is only honest if it shows the whole result set — a map plotting
+   * page 1 of 9 tells the visitor there are six properties in the city.
+   *
+   * Listings without coordinates are excluded here rather than filtered client-side, so the count
+   * the UI reports is the count it can actually draw.
+   */
+  async findPins(query: FilterPropertyDto) {
+    const qb = this.propertyRepo
+      .createQueryBuilder('property')
+      .leftJoin('property.owner', 'owner')
+      .select(PIN_COLUMNS)
+      .where('property.latitude IS NOT NULL')
+      .andWhere('property.longitude IS NOT NULL')
+      // 0,0 is Null Island in the Gulf of Guinea — what an unset numeric column looks like.
+      .andWhere('NOT (property.latitude = 0 AND property.longitude = 0)');
+
+    if (query.ownerId) {
+      qb.andWhere('owner.id = :ownerId', { ownerId: Number(query.ownerId) });
+    }
+
+    this.applyFilters(qb, query);
+    this.applySort(qb, query.sort);
+    qb.take(PIN_LIMIT);
+
+    const pins = await qb.getMany();
+
+    return {
+      data: pins.map((pin) => ({
+        id: pin.id,
+        title: pin.title,
+        price: pin.price,
+        propertyType: pin.propertyType,
+        city: pin.city,
+        location: pin.location,
+        latitude: pin.latitude as number,
+        longitude: pin.longitude as number,
+      })),
+      /** Pins actually returned, which is the count the map can draw. */
+      total: pins.length,
+      /** True when the ceiling clipped the result, so the UI can say the map is partial. */
+      truncated: pins.length === PIN_LIMIT,
+    };
+  }
+
   async findWithinBounds(bounds: MapBoundsDto) {
-    const properties = await this.propertyRepo
+    const qb = this.propertyRepo
       .createQueryBuilder('property')
       .leftJoin('property.owner', 'owner')
       .select(LIST_COLUMNS)
@@ -210,12 +297,89 @@ export class PropertiesService {
         west: bounds.west,
         east: bounds.east,
       })
-      .getMany();
+      // Same Null Island exclusion as `findPins`: the write path stores 0 for an unset
+      // coordinate, so a viewport over the Gulf of Guinea would otherwise return every
+      // unmapped listing in the portfolio.
+      .andWhere('NOT (property.latitude = 0 AND property.longitude = 0)');
 
+    if (bounds.ownerId) {
+      qb.andWhere('owner.id = :ownerId', { ownerId: Number(bounds.ownerId) });
+    }
+
+    this.applyFilters(qb, bounds);
+    this.applySort(qb, bounds.sort);
+
+    // A zoomed-right-out viewport would otherwise ask for the entire table. The map cannot
+    // usefully render more pins than this anyway, and the list beside it paginates separately.
+    qb.take(MAP_RESULT_LIMIT);
+
+    const properties = await qb.getMany();
     return properties.map((p) => this.appendImageUrls(p));
   }
 
   // ── PRIVATE ──────────────────────────────────────────────
+  /**
+   * The filter clauses shared by the paginated list and the map viewport, so the two views can
+   * never disagree about what "Warehouse under $2M in Austin" means.
+   */
+  private applyFilters(
+    qb: SelectQueryBuilder<Property>,
+    query: Pick<
+      FilterPropertyDto,
+      'search' | 'city' | 'propertyType' | 'minPrice' | 'maxPrice' | 'bedrooms'
+    >,
+  ) {
+    if (query.search?.trim()) {
+      qb.andWhere(
+        `(LOWER(property.title)        LIKE LOWER(:s)
+          OR LOWER(property.city)       LIKE LOWER(:s)
+          OR LOWER(property.location)   LIKE LOWER(:s)
+          OR LOWER(property.propertyType) LIKE LOWER(:s))`,
+        { s: `%${query.search.trim()}%` },
+      );
+    }
+
+    if (query.city?.trim()) {
+      qb.andWhere('LOWER(property.city) LIKE LOWER(:city)', {
+        city: `%${query.city.trim()}%`,
+      });
+    }
+
+    if (query.propertyType?.trim()) {
+      // Case-insensitive exact match: the filter dropdown is populated from stored values,
+      // but a trailing space or different casing must not silently return zero results.
+      qb.andWhere('LOWER(property.propertyType) = LOWER(:pt)', {
+        pt: query.propertyType.trim(),
+      });
+    }
+
+    if (query.minPrice) {
+      qb.andWhere('property.price >= :min', { min: Number(query.minPrice) });
+    }
+
+    if (query.maxPrice) {
+      qb.andWhere('property.price <= :max', { max: Number(query.maxPrice) });
+    }
+
+    if (query.bedrooms) {
+      qb.andWhere('property.bedrooms >= :bed', { bed: Number(query.bedrooms) });
+    }
+  }
+
+  private applySort(qb: SelectQueryBuilder<Property>, sort?: string) {
+    switch (sort) {
+      case 'price_asc':
+        qb.orderBy('property.price', 'ASC');
+        break;
+      case 'price_desc':
+        qb.orderBy('property.price', 'DESC');
+        break;
+      default:
+        qb.orderBy('property.createdAt', 'DESC');
+        break;
+    }
+  }
+
   private assertOwnerOrAdmin(
     property: Property,
     user: { id: number; role: string },

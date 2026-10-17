@@ -49,6 +49,13 @@ export class MediaController {
     return this.mediaService.findAll();
   }
 
+  @Patch(':id')
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  update(@Param('id', ParseIntPipe) id: number, @Body() body: { altText?: string }) {
+    return this.mediaService.update(id, body);
+  }
+
   @Delete(':id')
   @UseGuards(JwtGuard, RolesGuard)
   @Roles(UserRole.ADMIN)

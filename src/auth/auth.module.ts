@@ -18,10 +18,13 @@ import { User } from 'src/users/user.entity';
       imports: [ConfigModule],
       inject: [ConfigService],
 
-      useFactory: (config: ConfigService) => ({
-        secret: config.get('JWT_SECRET'),
-        signOptions: { expiresIn: '15m' },
-      }),
+      useFactory: (config: ConfigService) => {
+        const secret = config.get<string>('JWT_SECRET');
+        if (!secret || secret.length < 32 || secret.startsWith('replace-')) {
+          throw new Error('JWT_SECRET must be a unique random value of at least 32 characters');
+        }
+        return { secret, signOptions: { expiresIn: '15m' } };
+      },
     }),
     PassportModule,
   ],

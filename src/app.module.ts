@@ -14,20 +14,29 @@ import { PagesModule } from './pages/pages.module';
 import { MediaModule } from './media/media.module';
 import { SectionsModule } from './sections/sections.module';
 import { SettingsModule } from './settings/settings.module';
+import { MailModule } from './mail/mail.module';
+import { ContactModule } from './contact/contact.module';
+import { SeedModule } from './seed/seed.module';
+import { ServicesModule } from './services/services.module';
+import { ServicesAndRecovery2026101600000 } from './migrations/2026101600000-ServicesAndRecovery';
+import { ThrottlerModule } from '@nestjs/throttler';
 @Module({
   imports: [
+    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 10 }]),
     ConfigModule.forRoot({
       isGlobal: true,
     }),
     TypeOrmModule.forRoot({
       type: 'mysql',
       host: process.env.DB_HOST ?? 'localhost',
-      port: 3306,
+      port: Number(process.env.DB_PORT ?? 3306),
       username: process.env.DB_USER ?? 'root',
       password: process.env.DB_PASS ?? 'admin',
       database: process.env.DB_NAME ?? 'real_estate',
       autoLoadEntities: true,
       synchronize: process.env.NODE_ENV !== 'production',
+      migrations: [ServicesAndRecovery2026101600000],
+      migrationsRun: process.env.NODE_ENV === 'production',
     }),
     UsersModule,
     AuthModule,
@@ -40,6 +49,10 @@ import { SettingsModule } from './settings/settings.module';
     MediaModule,
     SectionsModule,
     SettingsModule,
+    MailModule,
+    ContactModule,
+    SeedModule,
+    ServicesModule,
   ],
   // CacheModule.register({ ttl: 300, max: 100 }),
   controllers: [AppController],

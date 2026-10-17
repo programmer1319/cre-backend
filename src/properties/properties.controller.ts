@@ -60,6 +60,19 @@ export class PropertiesController {
     return this.propertyService.findFeatured();
   }
 
+  // Must stay above `@Get(':slug')` — Nest matches in declaration order and the param route
+  // would otherwise swallow the literal path and look up a property named "facets".
+  @Get('facets')
+  getFacets() {
+    return this.propertyService.findFacets();
+  }
+
+  // Same ordering constraint as `facets` above.
+  @Get('pins')
+  getPins(@Query() query: FilterPropertyDto) {
+    return this.propertyService.findPins(query);
+  }
+
   @Get(':slug')
   findOne(@Param('slug') slug: string) {
     return this.propertyService.findOne(slug);
