@@ -41,7 +41,7 @@ export class Section {
   @JoinColumn({ name: 'hero_image_id' })
   heroImage!: Media | null;
 
-  @Column({ name: 'hero_image_id', nullable: true })
+  @Column({ name: 'hero_image_id', type: 'int', nullable: true })
   heroImageId!: number | null;
 
   @ManyToOne(() => Media, {
@@ -52,7 +52,7 @@ export class Section {
   @JoinColumn({ name: 'thumbnail_id' })
   thumbnail!: Media | null;
 
-  @Column({ name: 'thumbnail_id', nullable: true })
+  @Column({ name: 'thumbnail_id', type: 'int', nullable: true })
   thumbnailId!: number | null;
 
   @Column({ name: 'gallery_ids', type: 'json' })

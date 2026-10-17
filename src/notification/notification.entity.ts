@@ -13,7 +13,7 @@ export class Notification {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column()
+  @Column({ type: 'varchar', length: 20 })
   type!: 'lead' | 'property' | 'system';
 
   @Column()
@@ -33,7 +33,7 @@ export class Notification {
   @ManyToOne(() => Property, { nullable: true, onDelete: 'SET NULL' })
   property!: Property | null;
 
-  @Column({ nullable: true })
+  @Column({ type: 'int', nullable: true })
   propertyId!: number | null;
 
   @CreateDateColumn()
