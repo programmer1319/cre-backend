@@ -16,7 +16,7 @@ const CONTENT = [
 export class ContentSeedService implements OnApplicationBootstrap {
   constructor(@InjectRepository(Page) private readonly pages: Repository<Page>, @InjectRepository(Section) private readonly sections: Repository<Section>) {}
   async onApplicationBootstrap() {
-    if (process.env.SEED_CONTENT !== 'true') return;
+    if (process.env.SEED_CONTENT !== 'true' || process.env.RESET_DEMO_DATA === 'true') return;
     for (const source of CONTENT) {
       let page = await this.pages.findOne({ where: { slug: source.slug } });
       page = await this.pages.save(this.pages.create({ ...(page ?? {}), slug: source.slug, title: source.title, metaTitle: source.title, metaDescription: source.metaDescription, isActive: true }));

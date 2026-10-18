@@ -7,6 +7,7 @@ import {
   Res,
   Req,
   UnauthorizedException,
+  ForbiddenException,
   UseGuards,
   Patch,
 } from '@nestjs/common';
@@ -59,6 +60,9 @@ export class UsersController {
   @UseGuards(ThrottlerGuard)
   @Throttle({ default: { limit: 4, ttl: 60_000 } })
   createUser(@Body() body: CreateUserDto) {
+    if (process.env.NODE_ENV === 'production' && process.env.PUBLIC_REGISTRATION_ENABLED !== 'true') {
+      throw new ForbiddenException('Public registration is temporarily closed');
+    }
     return this.usersService.create(body);
   }
 
