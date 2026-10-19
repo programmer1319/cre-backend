@@ -24,7 +24,7 @@ export class SoleAdministrator2026101701000 implements MigrationInterface {
       const randomPasswordHash = await bcrypt.hash(randomBytes(48).toString('base64url'), 12);
       await queryRunner.query(
         'INSERT INTO `user` (name, email, password, role) VALUES (?, ?, ?, ?)',
-        ['Portico Administrator', ADMIN_EMAIL, randomPasswordHash, 'admin'],
+        ['CreFolio Administrator', ADMIN_EMAIL, randomPasswordHash, 'admin'],
       );
     }
 

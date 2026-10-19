@@ -16,9 +16,10 @@ export class MailService {
     const fromAddress = configuredFrom?.match(/<([^<>]+)>$/)?.[1] ?? configuredFrom;
     if (host?.toLowerCase() === 'smtp.gmail.com' && user && configuredFrom && fromAddress?.trim().toLowerCase() !== user.toLowerCase()) {
       this.logger.warn('MAIL_FROM differs from the authenticated Gmail account; using SMTP_USER as sender');
-      this.from = `Portico <${user}>`;
+      this.from = `CreFolio <${user}>`;
     } else {
-      this.from = configuredFrom || (user ? `Portico <${user}>` : 'Portico');
+      // Keep deployment sender addresses while the product owns the display name.
+      this.from = fromAddress ? `CreFolio <${fromAddress.trim()}>` : (user ? `CreFolio <${user}>` : 'CreFolio');
     }
     const secure = this.config.get('SMTP_SECURE') === 'true';
     this.transporter = host && user && pass ? nodemailer.createTransport({ host, port: Number(this.config.get('SMTP_PORT') ?? 587), secure, requireTLS: !secure, auth: { user, pass }, connectionTimeout: 10_000, greetingTimeout: 10_000 }) : null;

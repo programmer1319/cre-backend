@@ -8,7 +8,7 @@ jest.mock('nodemailer', () => ({ __esModule: true, default: { createTransport: j
 describe('MailService', () => {
   const config = { get: (key: string) => ({
     SMTP_HOST: 'smtp.gmail.com', SMTP_PORT: '587', SMTP_USER: 'sender@example.com',
-    SMTP_PASS: 'test-only', MAIL_FROM: 'Portico <sender@example.com>',
+    SMTP_PASS: 'test-only', MAIL_FROM: 'CreFolio <sender@example.com>',
   } as Record<string, string>)[key] } as ConfigService;
 
   it('rejects an SMTP response that accepted no recipient', async () => {
@@ -30,8 +30,8 @@ describe('MailService', () => {
   it('uses the authenticated Gmail sender when MAIL_FROM claims another domain', async () => {
     const sendMail = jest.fn().mockResolvedValue({ accepted: ['admin@example.com'] });
     jest.mocked(nodemailer.createTransport).mockReturnValue({ sendMail } as never);
-    const wrongFrom = { get: (key: string) => key === 'MAIL_FROM' ? 'Portico <no-reply@other.example>' : config.get(key) } as ConfigService;
+    const wrongFrom = { get: (key: string) => key === 'MAIL_FROM' ? 'CreFolio <no-reply@other.example>' : config.get(key) } as ConfigService;
     await new MailService(wrongFrom).send({ to: 'admin@example.com', subject: 'Test', text: 'Test' });
-    expect(sendMail).toHaveBeenCalledWith(expect.objectContaining({ from: 'Portico <sender@example.com>' }));
+    expect(sendMail).toHaveBeenCalledWith(expect.objectContaining({ from: 'CreFolio <sender@example.com>' }));
   });
 });

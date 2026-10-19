@@ -8,36 +8,36 @@ const requestOrigin = process.env.DEMO_REQUEST_ORIGIN || 'https://crefolio.verce
 
 const pages = [
   {
-    slug: 'home', title: 'Portico | Commercial property showcase',
+    slug: 'home', title: 'CreFolio | Commercial property showcase',
     description: 'An illustrative portfolio of commercial property opportunities.',
     sections: {
       hero: { kicker: 'Illustrative portfolio', heading: 'Spaces that shape', emphasis: 'what comes next.', body: 'Explore a sample portfolio of commercial spaces across major US markets. Properties, prices and availability are illustrative.' },
-      manifesto: { kicker: 'A considered perspective', heading: 'The right property decision starts with a clear view of the opportunity.', body: 'Compare location, specification and commercial terms in one place. This showcase demonstrates the Portico experience using fictional listings.' },
-      film: { kicker: 'Explore Portico', heading: 'See the story behind each space.', body: 'A visual preview of how properties and market context can be presented to clients.', label: 'Portico showcase' },
+      manifesto: { kicker: 'A considered perspective', heading: 'The right property decision starts with a clear view of the opportunity.', body: 'Compare location, specification and commercial terms in one place. This showcase demonstrates the CreFolio experience using fictional listings.' },
+      film: { kicker: 'Explore CreFolio', heading: 'See the story behind each space.', body: 'A visual preview of how properties and market context can be presented to clients.', label: 'CreFolio showcase' },
       featured: { kicker: 'Selected examples', heading: 'Featured opportunities' },
       expertise: { kicker: 'Illustrative capabilities', heading: 'Services across the property journey.', body: 'Explore sample service pages created and maintained through the content dashboard.' },
       search: { assetClasses: ['Office', 'Retail', 'Industrial', 'Mixed use'] },
     },
   },
   {
-    slug: 'about', title: 'About Portico', description: 'A demonstration of Portico’s commercial property platform.',
+    slug: 'about', title: 'About CreFolio', description: 'A demonstration of CreFolio’s commercial property platform.',
     sections: {
-      intro: { kicker: 'About Portico', heading: 'A clearer view of commercial property.', body: 'Portico is a demonstration platform for property discovery and portfolio administration. The company profile, services and listings shown here are illustrative.' },
+      intro: { kicker: 'About CreFolio', heading: 'A clearer view of commercial property.', body: 'CreFolio is a demonstration platform for property discovery and portfolio administration. The company profile, services and listings shown here are illustrative.' },
       perspective: { kicker: 'Our approach', heading: 'Bring the details into focus.', paragraphs: ['A useful listing connects an asset’s location and specification with the terms that matter to a buyer or occupier.', 'This sample portfolio shows how a team can publish opportunities, manage enquiries and keep content current.'] },
       principles: { kicker: 'What guides the experience', items: [{ number: '01', title: 'Clarity', description: 'Make each asset easy to understand and compare.' }, { number: '02', title: 'Context', description: 'Show the location, terms and supporting documents together.' }, { number: '03', title: 'Continuity', description: 'Carry enquiries from first contact into the management workspace.' }] },
       team: { kicker: 'The workspace', heading: 'Designed for a connected property team.', body: 'The dashboard brings listings, content and enquiries into one editorial workflow.', featureKicker: 'One platform', featureHeading: 'Public presentation and private management.', featureBody: 'Maintain the information clients see while tracking the conversations it starts.', members: [] },
     },
   },
   {
-    slug: 'services', title: 'Services | Portico', description: 'Illustrative commercial property service catalogue.',
+    slug: 'services', title: 'Services | CreFolio', description: 'Illustrative commercial property service catalogue.',
     sections: { intro: { kicker: 'Sample services', heading: 'Support from first brief to final decision.', body: 'These sample service descriptions demonstrate the CMS. They do not represent a current professional engagement or service offer.' } },
   },
   {
-    slug: 'properties', title: 'Properties | Portico', description: 'Fictional commercial listings for a product demonstration.',
+    slug: 'properties', title: 'Properties | CreFolio', description: 'Fictional commercial listings for a product demonstration.',
     sections: { intro: { kicker: 'Illustrative listings', heading: 'Explore spaces with potential.', body: 'Every listing, price and availability status on this site is fictional. Map pins show approximate districts, not property addresses.' } },
   },
   {
-    slug: 'contact', title: 'Contact | Portico', description: 'Try the Portico enquiry workflow.',
+    slug: 'contact', title: 'Contact | CreFolio', description: 'Try the CreFolio enquiry workflow.',
     sections: {
       intro: { kicker: 'Start a conversation', heading: 'Tell us what you are looking for.', body: 'This form demonstrates the enquiry workflow. Please do not submit sensitive information about a real transaction.' },
       details: { items: [{ label: 'Enquiries', value: 'Use the form on this page', link: '' }, { label: 'Portfolio', value: 'Illustrative properties only', link: '' }] },
@@ -45,23 +45,23 @@ const pages = [
     },
   },
   {
-    slug: 'privacy', title: 'Privacy notice | Portico', description: 'Illustrative privacy notice for a client demonstration.',
+    slug: 'privacy', title: 'Privacy notice | CreFolio', description: 'Illustrative privacy notice for a client demonstration.',
     sections: {
       intro: { updated: 'Illustrative draft · October 2026', body: 'This is sample privacy copy for a product demonstration, not an approved privacy policy. A real operator must replace it with a notice reflecting its actual data practices and applicable law.' },
       topics: { items: [{ title: 'Information in this demo', body: 'The demonstration can store account details, saved properties and messages submitted through its forms.' }, { title: 'Operational use', body: 'An authorized administrator can view this information in the dashboard to demonstrate property and enquiry workflows.' }, { title: 'Before launch', body: 'The business owner should define retention, deletion, hosting and contact practices, then publish a reviewed policy.' }] },
     },
   },
   {
-    slug: 'terms', title: 'Terms of use | Portico', description: 'Illustrative terms for a client demonstration.',
+    slug: 'terms', title: 'Terms of use | CreFolio', description: 'Illustrative terms for a client demonstration.',
     sections: {
       intro: { updated: 'Illustrative draft · October 2026', body: 'These sample terms describe a demonstration only. They are not legal terms for a live brokerage or property transaction.' },
       topics: { items: [{ title: 'Sample listings', body: 'Properties, addresses, prices and availability shown here are fictional examples and do not constitute an offer.' }, { title: 'Use of the demo', body: 'Use the site to review its interface and workflow. Confirm all commercial facts independently before any real decision.' }, { title: 'Before launch', body: 'The business owner should obtain reviewed terms that describe its actual services, responsibilities and jurisdiction.' }] },
     },
   },
   {
-    slug: 'accessibility', title: 'Accessibility statement | Portico', description: 'Illustrative accessibility statement for a client demonstration.',
+    slug: 'accessibility', title: 'Accessibility statement | CreFolio', description: 'Illustrative accessibility statement for a client demonstration.',
     sections: {
-      intro: { updated: 'Illustrative draft · October 2026', body: 'Portico is a demonstration platform. This draft statement must be replaced after an accessibility review of the deployed service.' },
+      intro: { updated: 'Illustrative draft · October 2026', body: 'CreFolio is a demonstration platform. This draft statement must be replaced after an accessibility review of the deployed service.' },
       topics: { items: [{ title: 'Current experience', body: 'The interface supports keyboard navigation, visible labels and responsive layouts across the main property and content flows.' }, { title: 'Feedback', body: 'Use the contact form to report a barrier encountered while reviewing the demonstration.' }, { title: 'Before launch', body: 'Complete device and assistive-technology testing, document known limitations and publish a reviewed statement.' }] },
     },
   },
@@ -96,7 +96,7 @@ async function illustration(title, variant = 0) {
 
 function brochure(title) {
   const safe = title.replace(/[^\x20-\x7E]/g, '-').replace(/[()\\]/g, '').slice(0, 70);
-  const content = `BT /F1 22 Tf 50 740 Td (PORTICO SAMPLE BROCHURE) Tj 0 -45 Td /F1 15 Tf (${safe}) Tj 0 -40 Td (Illustrative listing. No real property is offered.) Tj 0 -30 Td (Location, price, area and availability are examples only.) Tj ET`;
+  const content = `BT /F1 22 Tf 50 740 Td (CREFOLIO SAMPLE BROCHURE) Tj 0 -45 Td /F1 15 Tf (${safe}) Tj 0 -40 Td (Illustrative listing. No real property is offered.) Tj 0 -30 Td (Location, price, area and availability are examples only.) Tj ET`;
   const objects = [
     '<< /Type /Catalog /Pages 2 0 R >>',
     '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
@@ -197,7 +197,7 @@ for (const [index, [slug, title, icon, kicker, summary]] of services.entries()) 
     body: [`${summary} This page is an original, illustrative example of a commercial property service.`, 'The steps below show how a client brief can be organized. No specific transaction or professional outcome is represented.'],
     outcomes: ['A documented requirement', 'A clear comparison of options', 'A record of the recommended next steps'],
     process: [{ title: 'Brief', detail: 'Define the commercial objective and constraints.' }, { title: 'Review', detail: 'Compare relevant options and supporting information.' }, { title: 'Decision', detail: 'Record the recommended action and the assumptions behind it.' }],
-    faqs: [{ question: 'Is this an active service offer?', answer: 'No. This is illustrative content for a Portico client demonstration.' }],
+    faqs: [{ question: 'Is this an active service offer?', answer: 'No. This is illustrative content for a CreFolio client demonstration.' }],
     isActive: true, featured: index < 3, sortOrder: index,
   });
 }
@@ -218,7 +218,7 @@ for (const [index, property] of properties.entries()) {
 
 await request('POST', `/favorites/${createdProperties[0].id}`);
 await request('POST', '/leads', { name: 'Sample visitor', email: 'visitor@example.test', message: 'Illustrative enquiry: please show how this property is handled in the dashboard.', property: createdProperties[0].id });
-await request('POST', '/contact', { name: 'Sample prospect', email: 'prospect@example.test', company: 'Example Organisation', message: 'Illustrative contact message for the Portico demonstration workspace.' });
+await request('POST', '/contact', { name: 'Sample prospect', email: 'prospect@example.test', company: 'Example Organisation', message: 'Illustrative contact message for the CreFolio demonstration workspace.' });
 
 const publicProperties = await request('GET', '/properties');
 const publicServices = await request('GET', '/services');

@@ -42,7 +42,7 @@ export class UsersService {
       password: hashedPassword,
     });
     const saved = await this.userRepo.save(user);
-    await this.mail.send({ to: saved.email, subject: 'Welcome to Portico', text: `Hello ${saved.name},\n\nYour Portico account is ready. You can sign in to explore properties and manage your shortlist.\n\nIf you did not create this account, contact our team.` }).catch((error: unknown) => this.logger.error('Welcome email failed', error));
+    await this.mail.send({ to: saved.email, subject: 'Welcome to CreFolio', text: `Hello ${saved.name},\n\nYour CreFolio account is ready. You can sign in to explore properties and manage your shortlist.\n\nIf you did not create this account, contact our team.` }).catch((error: unknown) => this.logger.error('Welcome email failed', error));
     return this.toPublicUser(saved);
   }
 
@@ -77,8 +77,8 @@ export class UsersService {
         user.email = email;
         await this.userRepo.save(user);
         await Promise.allSettled([
-          this.mail.send({ to: oldEmail, subject: 'Your Portico email changed', text: `Your Portico account email changed to ${email}. If this was not you, contact our team immediately.` }),
-          this.mail.send({ to: email, subject: 'Portico email address updated', text: 'This email address is now associated with your Portico account.' }),
+          this.mail.send({ to: oldEmail, subject: 'Your CreFolio email changed', text: `Your CreFolio account email changed to ${email}. If this was not you, contact our team immediately.` }),
+          this.mail.send({ to: email, subject: 'CreFolio email address updated', text: 'This email address is now associated with your CreFolio account.' }),
         ]);
       }
     }
@@ -114,7 +114,7 @@ export class UsersService {
     user.password = await bcrypt.hash(newPassword, 12);
     user.tokenVersion = (user.tokenVersion ?? 0) + 1;
     await this.userRepo.save(user);
-    await this.mail.send({ to: user.email, subject: 'Your Portico password changed', text: 'Your Portico password was changed. If you did not make this change, contact our team immediately.' }).catch((error: unknown) => this.logger.error('Password change email failed', error));
+    await this.mail.send({ to: user.email, subject: 'Your CreFolio password changed', text: 'Your CreFolio password was changed. If you did not make this change, contact our team immediately.' }).catch((error: unknown) => this.logger.error('Password change email failed', error));
     return { message: 'Password updated successfully' };
   }
 
@@ -127,7 +127,7 @@ export class UsersService {
       await this.resetRepo.delete({ userId: user.id });
       await this.resetRepo.save(this.resetRepo.create({ userId: user.id, tokenHash: this.hashToken(token), expiresAt: new Date(Date.now() + 30 * 60 * 1000), usedAt: null }));
       const url = `${base.replace(/\/$/, '')}/reset-password?token=${token}`;
-      await this.mail.send({ to: user.email, subject: 'Reset your Portico password', text: `A password reset was requested for your Portico account.\n\nOpen this link within 30 minutes:\n${url}\n\nIf you did not request this, you can ignore this email.` }).catch((error: unknown) => this.logger.error('Recovery email failed', error));
+      await this.mail.send({ to: user.email, subject: 'Reset your CreFolio password', text: `A password reset was requested for your CreFolio account.\n\nOpen this link within 30 minutes:\n${url}\n\nIf you did not request this, you can ignore this email.` }).catch((error: unknown) => this.logger.error('Recovery email failed', error));
     }
     return { message: 'If an account exists, a recovery link has been sent.' };
   }
@@ -143,7 +143,7 @@ export class UsersService {
     user.tokenVersion = (user.tokenVersion ?? 0) + 1;
     await this.userRepo.save(user);
     await this.resetRepo.delete({ userId: user.id });
-    await this.mail.send({ to: user.email, subject: 'Your Portico password was reset', text: 'Your Portico password was reset. If you did not make this change, contact our team immediately.' }).catch((error: unknown) => this.logger.error('Reset confirmation email failed', error));
+    await this.mail.send({ to: user.email, subject: 'Your CreFolio password was reset', text: 'Your CreFolio password was reset. If you did not make this change, contact our team immediately.' }).catch((error: unknown) => this.logger.error('Reset confirmation email failed', error));
     return { message: 'Password reset. You can now sign in.' };
   }
 

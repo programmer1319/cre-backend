@@ -9,7 +9,7 @@ import { UsersService } from './users.service';
 describe('password recovery', () => {
   const user = { id: 7, email: 'client@example.com', password: 'old', tokenVersion: 2 } as User;
   const mail = { send: jest.fn().mockResolvedValue(undefined), isConfigured: jest.fn().mockReturnValue(true) } as unknown as MailService;
-  const config = { get: jest.fn().mockReturnValue('https://portico.example') } as unknown as ConfigService;
+  const config = { get: jest.fn().mockReturnValue('https://crefolio.example') } as unknown as ConfigService;
 
   it('gives the same public response for an unknown address', async () => {
     const users = { findOne: jest.fn().mockResolvedValue(null) } as unknown as Repository<User>;
