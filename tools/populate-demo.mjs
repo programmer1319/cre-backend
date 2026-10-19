@@ -145,16 +145,27 @@ void signedIn;
 // Deletions use the same guarded CRUD routes as the dashboard. No database table is edited directly.
 // Read every management collection before the first write, so an old deployment or a missing
 // permission fails without leaving a half-cleared catalogue.
-const current = {
-  notifications: await request('GET', '/notification'),
-  favorites: await request('GET', '/favorites'),
-  leads: await request('GET', '/leads'),
-  contacts: await request('GET', '/contact'),
-  properties: await request('GET', '/properties/admin?limit=48'),
-  pages: await request('GET', '/pages'),
-  services: await request('GET', '/services/admin'),
-  media: await request('GET', '/media'),
+const collections = {
+  notifications: '/notification',
+  favorites: '/favorites',
+  leads: '/leads',
+  contacts: '/contact',
+  properties: '/properties/admin?limit=48',
+  pages: '/pages',
+  services: '/services/admin',
+  media: '/media',
 };
+const current = {};
+const preflightErrors = [];
+for (const [name, path] of Object.entries(collections)) {
+  try {
+    current[name] = await request('GET', path);
+    process.stdout.write(`Preflight ${path}: OK\n`);
+  } catch (error) {
+    preflightErrors.push(error.message);
+  }
+}
+if (preflightErrors.length) throw new Error(`Preflight failed before changes:\n${preflightErrors.join('\n')}`);
 for (const notification of current.notifications) await request('DELETE', `/notification/${notification.id}`);
 for (const favorite of current.favorites) await request('POST', `/favorites/${favorite.property.id}`);
 for (const lead of current.leads) await request('DELETE', `/leads/${lead.id}`);

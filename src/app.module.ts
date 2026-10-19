@@ -21,6 +21,7 @@ import { ServicesAndRecovery2026101600000 } from './migrations/2026101600000-Ser
 import { ContactAndProfiles2026101700000 } from './migrations/2026101700000-ContactAndProfiles';
 import { SoleAdministrator2026101701000 } from './migrations/2026101701000-SoleAdministrator';
 import { PropertyDetails2026101800000 } from './migrations/2026101800000-PropertyDetails';
+import { LeadStatus2026101900000 } from './migrations/2026101900000-LeadStatus';
 import { ThrottlerModule } from '@nestjs/throttler';
 @Module({
   imports: [
@@ -37,7 +38,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
       database: process.env.DB_NAME ?? 'real_estate',
       autoLoadEntities: true,
       synchronize: process.env.NODE_ENV !== 'production',
-      migrations: [ServicesAndRecovery2026101600000, ContactAndProfiles2026101700000, SoleAdministrator2026101701000, PropertyDetails2026101800000],
+      migrations: [ServicesAndRecovery2026101600000, ContactAndProfiles2026101700000, SoleAdministrator2026101701000, PropertyDetails2026101800000, LeadStatus2026101900000],
       migrationsRun: process.env.NODE_ENV === 'production',
     }),
     UsersModule,
