@@ -1,9 +1,10 @@
-import { Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import nodemailer, { Transporter } from 'nodemailer';
 
 @Injectable()
 export class MailService {
+  private readonly logger = new Logger(MailService.name);
   private readonly transporter: Transporter | null;
   private readonly from: string;
 
@@ -11,7 +12,14 @@ export class MailService {
     const host = this.config.get<string>('SMTP_HOST');
     const user = this.config.get<string>('SMTP_USER');
     const pass = this.config.get<string>('SMTP_PASS');
-    this.from = this.config.get<string>('MAIL_FROM') || (user ? `Portico <${user}>` : 'Portico');
+    const configuredFrom = this.config.get<string>('MAIL_FROM')?.trim();
+    const fromAddress = configuredFrom?.match(/<([^<>]+)>$/)?.[1] ?? configuredFrom;
+    if (host?.toLowerCase() === 'smtp.gmail.com' && user && configuredFrom && fromAddress?.trim().toLowerCase() !== user.toLowerCase()) {
+      this.logger.warn('MAIL_FROM differs from the authenticated Gmail account; using SMTP_USER as sender');
+      this.from = `Portico <${user}>`;
+    } else {
+      this.from = configuredFrom || (user ? `Portico <${user}>` : 'Portico');
+    }
     const secure = this.config.get('SMTP_SECURE') === 'true';
     this.transporter = host && user && pass ? nodemailer.createTransport({ host, port: Number(this.config.get('SMTP_PORT') ?? 587), secure, requireTLS: !secure, auth: { user, pass }, connectionTimeout: 10_000, greetingTimeout: 10_000 }) : null;
   }

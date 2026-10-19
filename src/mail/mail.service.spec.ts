@@ -26,4 +26,12 @@ describe('MailService', () => {
     await expect(mail.send({ to: 'admin@example.com', subject: 'Test', text: 'Test' }))
       .resolves.toMatchObject({ messageId: '<test@example.com>' });
   });
+
+  it('uses the authenticated Gmail sender when MAIL_FROM claims another domain', async () => {
+    const sendMail = jest.fn().mockResolvedValue({ accepted: ['admin@example.com'] });
+    jest.mocked(nodemailer.createTransport).mockReturnValue({ sendMail } as never);
+    const wrongFrom = { get: (key: string) => key === 'MAIL_FROM' ? 'Portico <no-reply@other.example>' : config.get(key) } as ConfigService;
+    await new MailService(wrongFrom).send({ to: 'admin@example.com', subject: 'Test', text: 'Test' });
+    expect(sendMail).toHaveBeenCalledWith(expect.objectContaining({ from: 'Portico <sender@example.com>' }));
+  });
 });
