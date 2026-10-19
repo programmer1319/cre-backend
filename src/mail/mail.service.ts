@@ -18,7 +18,11 @@ export class MailService {
 
   async send(options: { to: string; subject: string; text: string; replyTo?: string }) {
     if (!this.transporter) throw new ServiceUnavailableException('Email service is not configured');
-    return this.transporter.sendMail({ from: this.from, ...options });
+    const result = await this.transporter.sendMail({ from: this.from, ...options });
+    if (!result.accepted?.some((address: string) => address.toLowerCase() === options.to.toLowerCase())) {
+      throw new ServiceUnavailableException('Email provider did not accept the recipient');
+    }
+    return result;
   }
 
   isConfigured() { return this.transporter !== null; }

@@ -11,10 +11,10 @@ describe('ServicesService', () => {
     isActive: true, featured: true, sortOrder: 0,
   };
 
-  it('rejects a tenth published featured service', async () => {
+  it('rejects a seventh published featured service', async () => {
     const repo = {
       exists: jest.fn().mockResolvedValue(false),
-      count: jest.fn().mockResolvedValue(9),
+      count: jest.fn().mockResolvedValue(6),
       create: jest.fn((item) => item),
       save: jest.fn(),
     } as unknown as Repository<SiteService>;

@@ -13,7 +13,7 @@ export class ServicesService {
   }
 
   featured() {
-    return this.repo.find({ where: { isActive: true, featured: true }, order: { sortOrder: 'ASC', id: 'ASC' }, take: 9 });
+    return this.repo.find({ where: { isActive: true, featured: true }, order: { sortOrder: 'ASC', id: 'ASC' }, take: 6 });
   }
 
   adminList() {
@@ -54,6 +54,6 @@ export class ServicesService {
     if (!featured) return;
     const count = await this.repo.count({ where: { featured: true, isActive: true } });
     const currentlyFeatured = excludeId ? await this.repo.exists({ where: { id: excludeId, featured: true, isActive: true } }) : false;
-    if (count - Number(currentlyFeatured) >= 9) throw new BadRequestException('At most nine published services can be featured');
+    if (count - Number(currentlyFeatured) >= 6) throw new BadRequestException('At most six published services can be featured');
   }
 }
