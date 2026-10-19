@@ -6,7 +6,6 @@ import {
   Patch,
   Param,
   Delete,
-  UseInterceptors,
   UseGuards,
 } from '@nestjs/common';
 import { PagesService } from './pages.service';
@@ -16,7 +15,6 @@ import { JwtGuard } from 'src/auth/jwt/jwt.guard';
 import { RolesGuard } from 'src/guards/roles.guard';
 import { UserRole } from 'src/users/user-role.enum';
 import { Roles } from 'src/users/roles.decorater';
-import { CacheInterceptor } from '@nestjs/cache-manager';
 
 @Controller('pages')
 export class PagesController {
@@ -30,7 +28,6 @@ export class PagesController {
   }
 
   @Get(':slug')
-  @UseInterceptors(CacheInterceptor)
   async getPage(@Param('slug') slug: string) {
     return this.pagesService.findOne(slug);
   }

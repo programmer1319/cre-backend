@@ -16,12 +16,11 @@ import { SectionsModule } from './sections/sections.module';
 import { SettingsModule } from './settings/settings.module';
 import { MailModule } from './mail/mail.module';
 import { ContactModule } from './contact/contact.module';
-import { SeedModule } from './seed/seed.module';
 import { ServicesModule } from './services/services.module';
 import { ServicesAndRecovery2026101600000 } from './migrations/2026101600000-ServicesAndRecovery';
 import { ContactAndProfiles2026101700000 } from './migrations/2026101700000-ContactAndProfiles';
 import { SoleAdministrator2026101701000 } from './migrations/2026101701000-SoleAdministrator';
-import { DemoSeedMarker2026101702000 } from './migrations/2026101702000-DemoSeedMarker';
+import { PropertyDetails2026101800000 } from './migrations/2026101800000-PropertyDetails';
 import { ThrottlerModule } from '@nestjs/throttler';
 @Module({
   imports: [
@@ -38,7 +37,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
       database: process.env.DB_NAME ?? 'real_estate',
       autoLoadEntities: true,
       synchronize: process.env.NODE_ENV !== 'production',
-      migrations: [ServicesAndRecovery2026101600000, ContactAndProfiles2026101700000, SoleAdministrator2026101701000, DemoSeedMarker2026101702000],
+      migrations: [ServicesAndRecovery2026101600000, ContactAndProfiles2026101700000, SoleAdministrator2026101701000, PropertyDetails2026101800000],
       migrationsRun: process.env.NODE_ENV === 'production',
     }),
     UsersModule,
@@ -54,7 +53,6 @@ import { ThrottlerModule } from '@nestjs/throttler';
     SettingsModule,
     MailModule,
     ContactModule,
-    SeedModule,
     ServicesModule,
   ],
   // CacheModule.register({ ttl: 300, max: 100 }),

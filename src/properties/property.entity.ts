@@ -77,6 +77,27 @@ export class Property {
 
   @Column('simple-array', { nullable: true })
   images!: string[];
+
+  @Column({ type: 'varchar', length: 20, default: 'sale' })
+  transactionType!: 'sale' | 'lease' | 'sale-lease';
+
+  @Column({ type: 'varchar', length: 20, default: 'available' })
+  status!: 'available' | 'under-offer' | 'leased' | 'sold' | 'withdrawn';
+
+  @Column({ type: 'varchar', length: 20, default: 'published' })
+  visibility!: 'published' | 'draft';
+
+  @Column({ type: 'varchar', length: 80, nullable: true })
+  priceUnit!: string | null;
+
+  @Column({ default: false })
+  featured!: boolean;
+
+  @Column({ type: 'simple-json', nullable: true })
+  amenities!: string[] | null;
+
+  @Column({ type: 'simple-json', nullable: true })
+  documents!: { title: string; url: string }[] | null;
   get imageUrls(): string[] {
     const baseUrl = process.env.BASE_URL;
 

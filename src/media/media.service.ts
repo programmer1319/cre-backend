@@ -15,13 +15,23 @@ export class MediaService {
     await fs.mkdir('./uploads/thumbs', { recursive: true });
     // Generate WebP thumbnail with Sharp
     const thumbName = `thumb_${file.filename.replace(extname(file.filename), '.webp')}`;
-    await sharp(file.path)
-      .resize(400, 300, { fit: 'cover' })
-      .webp({ quality: 80 })
-      .toFile(`./uploads/thumbs/${thumbName}`);
-
-    // Get original dimensions
-    const meta = await sharp(file.path).metadata();
+    let meta;
+    try {
+      // Decode before persisting the media record: a claimed image MIME type is not proof of
+      // valid image data, and failed uploads must not leave a public file behind.
+      meta = await sharp(file.path).metadata();
+      if (!['jpeg', 'png', 'webp', 'avif'].includes(meta.format ?? '')) throw new Error('Invalid image');
+      await sharp(file.path)
+        .resize(400, 300, { fit: 'cover' })
+        .webp({ quality: 80 })
+        .toFile(`./uploads/thumbs/${thumbName}`);
+    } catch {
+      await Promise.all([
+        fs.unlink(file.path).catch(() => undefined),
+        fs.unlink(`./uploads/thumbs/${thumbName}`).catch(() => undefined),
+      ]);
+      throw new BadRequestException('A valid image file is required');
+    }
 
     const media = this.repo.create({
       filename: file.filename,

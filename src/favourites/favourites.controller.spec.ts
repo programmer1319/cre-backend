@@ -9,7 +9,7 @@ describe('FavouritesController', () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [FavouritesController],
       providers: [FavouritesService],
-    }).compile();
+    }).useMocker(() => ({})).compile();
 
     controller = module.get<FavouritesController>(FavouritesController);
   });

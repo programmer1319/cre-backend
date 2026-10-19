@@ -1,20 +1,12 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException, OnApplicationBootstrap } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateServiceDto, UpdateServiceDto } from './service.dto';
 import { SiteService } from './service.entity';
-import { DEFAULT_SERVICES } from './default-services';
 
 @Injectable()
-export class ServicesService implements OnApplicationBootstrap {
+export class ServicesService {
   constructor(@InjectRepository(SiteService) private readonly repo: Repository<SiteService>) {}
-
-  async onApplicationBootstrap() {
-    // Only initialise a fresh catalogue. CMS edits survive every later deployment.
-    if (await this.repo.count() === 0) {
-      await this.repo.save(DEFAULT_SERVICES.map((item) => this.repo.create(item)));
-    }
-  }
 
   publicList() {
     return this.repo.find({ where: { isActive: true }, order: { sortOrder: 'ASC', id: 'ASC' } });

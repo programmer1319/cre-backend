@@ -8,6 +8,7 @@ import { Repository, SelectQueryBuilder } from 'typeorm';
 import { Property } from './property.entity';
 import { FilterPropertyDto } from './filter-property.dto';
 import { MapBoundsDto } from './map-bounds.dto';
+import { PropertyWriteDto } from './property-write.dto';
 import { ConfigService } from '@nestjs/config';
 
 /** Hard ceiling on pins returned for one map viewport. */
@@ -46,6 +47,13 @@ const LIST_COLUMNS = [
   'property.bathrooms',
   'property.area',
   'property.images',
+  'property.transactionType',
+  'property.status',
+  'property.visibility',
+  'property.priceUnit',
+  'property.featured',
+  'property.amenities',
+  'property.documents',
   // Coordinates ship with every list row so the map beside the list can plot the same
   // result set without a second round trip.
   'property.latitude',
@@ -70,12 +78,16 @@ export class PropertiesService {
   async create(data: Partial<Property>) {
     const property = this.propertyRepo.create(data);
     const saved = await this.propertyRepo.save(property);
-    return this.findOne(String(saved.id));
+    return this.findOne(String(saved.id), true);
   }
 
   async findFeatured() {
-    const result = await this.findAll({ page: '1', limit: '6', sort: 'latest' });
-    return result.data;
+    const rows = await this.propertyRepo.createQueryBuilder('property')
+      .leftJoin('property.owner', 'owner').select(LIST_COLUMNS)
+      .where('property.visibility = :visibility', { visibility: 'published' })
+      .andWhere('property.featured = :featured', { featured: true })
+      .orderBy('property.createdAt', 'DESC').take(6).getMany();
+    return rows.map((row) => this.appendImageUrls(row));
   }
 
   // ── FACETS ───────────────────────────────────────────────
@@ -92,7 +104,8 @@ export class PropertiesService {
         .createQueryBuilder('property')
         .select('property.propertyType', 'value')
         .addSelect('COUNT(property.id)', 'count')
-        .where('property.propertyType IS NOT NULL')
+        .where('property.visibility = :visibility', { visibility: 'published' })
+        .andWhere('property.propertyType IS NOT NULL')
         .andWhere("property.propertyType <> ''")
         .groupBy('property.propertyType')
         .orderBy('property.propertyType', 'ASC')
@@ -102,7 +115,8 @@ export class PropertiesService {
         .createQueryBuilder('property')
         .select('property.city', 'value')
         .addSelect('COUNT(property.id)', 'count')
-        .where('property.city IS NOT NULL')
+        .where('property.visibility = :visibility', { visibility: 'published' })
+        .andWhere('property.city IS NOT NULL')
         .andWhere("property.city <> ''")
         .groupBy('property.city')
         .orderBy('property.city', 'ASC')
@@ -112,6 +126,7 @@ export class PropertiesService {
         .createQueryBuilder('property')
         .select('MIN(property.price)', 'min')
         .addSelect('MAX(property.price)', 'max')
+        .where('property.visibility = :visibility', { visibility: 'published' })
         .getRawOne<{ min: string | null; max: string | null }>(),
     ]);
 
@@ -129,7 +144,7 @@ export class PropertiesService {
   }
 
   // ── LIST (public + my-properties) ────────────────────────
-  async findAll(query: FilterPropertyDto) {
+  async findAll(query: FilterPropertyDto, includeDraft = false) {
     const page = Math.max(1, Number(query.page || 1));
     const limit = Math.min(48, Math.max(1, Number(query.limit || 12)));
 
@@ -137,6 +152,8 @@ export class PropertiesService {
       .createQueryBuilder('property')
       .leftJoin('property.owner', 'owner')
       .select(LIST_COLUMNS);
+
+    if (!includeDraft) qb.where('property.visibility = :visibility', { visibility: 'published' });
 
     // Scope to one owner (used by dashboard "my properties")
     if (query.ownerId) {
@@ -162,13 +179,14 @@ export class PropertiesService {
   }
 
   // ── DETAIL ───────────────────────────────────────────────
-  async findOne(id: string) {
-    const property = await this.propertyRepo
+  async findOne(id: string, includeDraft = false) {
+    const query = this.propertyRepo
       .createQueryBuilder('property')
       .leftJoin('property.owner', 'owner')
       .addSelect(['owner.id', 'owner.name', 'owner.email'])
-      .where('property.id = :id', { id: parseInt(id) })
-      .getOne();
+      .where('property.id = :id', { id: parseInt(id) });
+    if (!includeDraft) query.andWhere('property.visibility = :visibility', { visibility: 'published' });
+    const property = await query.getOne();
 
     if (!property) throw new NotFoundException('Property not found');
     return this.appendImageUrls(property);
@@ -177,8 +195,8 @@ export class PropertiesService {
   // ── UPDATE (owner or admin only) ─────────────────────────
   async update(
     id: number,
-    body: any,
-    files: Express.Multer.File[],
+    body: PropertyWriteDto,
+    files: { images?: Express.Multer.File[]; documents?: Express.Multer.File[] },
     requestingUser: { id: number; role: string },
   ) {
     const existing = await this.propertyRepo.findOne({
@@ -201,9 +219,9 @@ export class PropertiesService {
       } catch {
         return value.split('/').pop() ?? value;
       }
-    }).filter(Boolean);
+    }).filter((value) => Boolean(value) && (existing.images ?? []).includes(value));
 
-    const newImages = files?.length ? files.map((f) => f.filename) : [];
+    const newImages = files?.images?.map((f) => f.filename) ?? [];
 
     const images = [...kept, ...newImages];
     const { keepImages, ...raw } = body;
@@ -212,12 +230,23 @@ export class PropertiesService {
       Object.entries(raw).map(([key, value]) => [key, numeric.includes(key) ? Number(value) : value]),
     );
 
+    const keptDocuments = (body.documents ?? []).filter((document) =>
+      (existing.documents ?? []).some((saved) => saved.url === document.url && saved.title === document.title),
+    );
+
     await this.propertyRepo.save({
       ...existing,
       ...rest,
-      images: images.length ? images : existing.images,
+      images,
+      documents: [
+        ...keptDocuments,
+        ...(files.documents ?? []).map((file) => ({
+          title: file.originalname,
+          url: `${(this.configService.get<string>('BASE_URL') ?? '').replace(/\/$/, '')}/uploads/${file.filename}`,
+        })),
+      ],
     });
-    return this.findOne(String(id));
+    return this.findOne(String(id), true);
   }
 
   // ── DELETE (owner or admin only) ─────────────────────────
@@ -252,6 +281,7 @@ export class PropertiesService {
       .leftJoin('property.owner', 'owner')
       .select(PIN_COLUMNS)
       .where('property.latitude IS NOT NULL')
+      .andWhere('property.visibility = :visibility', { visibility: 'published' })
       .andWhere('property.longitude IS NOT NULL')
       // 0,0 is Null Island in the Gulf of Guinea — what an unset numeric column looks like.
       .andWhere('NOT (property.latitude = 0 AND property.longitude = 0)');
@@ -293,6 +323,7 @@ export class PropertiesService {
         south: bounds.south,
         north: bounds.north,
       })
+      .andWhere('property.visibility = :visibility', { visibility: 'published' })
       .andWhere('property.longitude BETWEEN :west AND :east', {
         west: bounds.west,
         east: bounds.east,

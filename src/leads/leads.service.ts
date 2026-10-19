@@ -26,6 +26,7 @@ export class LeadsService {
     const property = await this.propertyRepo.findOne({
       where: {
         id: Number(data.property),
+        visibility: 'published',
       },
       relations: ['owner'],
     });

@@ -41,6 +41,12 @@ export class NotificationService {
     return this.setRead(id, userId, false);
   }
 
+  async remove(id: number, userId: number) {
+    const result = await this.repo.delete({ id, userId });
+    if (!result.affected) throw new NotFoundException('Notification not found');
+    return { message: 'Notification removed' };
+  }
+
   private async setRead(id: number, userId: number, read: boolean) {
     const notification = await this.repo.findOne({ where: { id, userId } });
     if (!notification) throw new NotFoundException('Notification not found');

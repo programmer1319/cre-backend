@@ -1,7 +1,9 @@
 import {
   Body,
+  BadRequestException,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   Param,
   Patch,
@@ -12,7 +14,7 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { FilesInterceptor } from '@nestjs/platform-express';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { PropertiesService } from './properties.service';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
 import { RolesGuard } from 'src/guards/roles.guard';
@@ -21,18 +23,47 @@ import { UserRole } from '../users/user-role.enum';
 import { FilterPropertyDto } from './filter-property.dto';
 import { MapBoundsDto } from './map-bounds.dto';
 import { PropertyWriteDto } from './property-write.dto';
-import { multerConfig } from 'src/config/upload.config';
+import { propertyUploadConfig } from 'src/config/upload.config';
+import { open, unlink } from 'node:fs/promises';
+import sharp from 'sharp';
 
 const uploadInterceptor = () =>
   UseInterceptors(
-    FilesInterceptor('images', 10, multerConfig),
+    FileFieldsInterceptor([{ name: 'images', maxCount: 10 }, { name: 'documents', maxCount: 5 }], propertyUploadConfig),
   );
+
+type PropertyFiles = { images?: Express.Multer.File[]; documents?: Express.Multer.File[] };
+const allUploadedFiles = (files: PropertyFiles) => [...(files?.images ?? []), ...(files?.documents ?? [])];
+const removeUploads = (files: PropertyFiles) => Promise.all(allUploadedFiles(files).map((file) => unlink(file.path).catch(() => undefined)));
+
+async function validateUploads(files: PropertyFiles) {
+  try {
+    for (const image of files?.images ?? []) {
+      const { format } = await sharp(image.path).metadata();
+      if (!['jpeg', 'png', 'webp', 'avif'].includes(format ?? '')) throw new Error('Invalid image');
+    }
+    for (const document of files?.documents ?? []) {
+      const file = await open(document.path, 'r');
+      try {
+        const header = Buffer.alloc(5);
+        await file.read(header, 0, 5, 0);
+        if (header.toString() !== '%PDF-') throw new Error('Invalid PDF');
+      } finally {
+        await file.close();
+      }
+    }
+  } catch {
+    await removeUploads(files);
+    throw new BadRequestException('Uploaded files must be valid images or PDFs');
+  }
+}
 
 @Controller('properties')
 export class PropertiesController {
   constructor(private propertyService: PropertiesService) {}
 
-  private transform(body: PropertyWriteDto, files: Express.Multer.File[]) {
+  private transform(body: PropertyWriteDto, files: PropertyFiles) {
+    const base = (process.env.BASE_URL ?? '').replace(/\/$/, '');
     return {
       title: body.title,
       description: body.description,
@@ -45,7 +76,17 @@ export class PropertiesController {
       bathrooms: Number(body.bathrooms),
       latitude: Number(body.latitude),
       longitude: Number(body.longitude),
-      images: files?.map((f) => f.filename) ?? [],
+      images: files?.images?.map((f) => f.filename) ?? [],
+      transactionType: body.transactionType ?? 'sale',
+      status: body.status ?? 'available',
+      visibility: body.visibility ?? 'published',
+      priceUnit: body.priceUnit ?? null,
+      featured: body.featured ?? false,
+      amenities: body.amenities ?? [],
+      documents: [
+        ...(body.documents ?? []),
+        ...(files.documents ?? []).map((file) => ({ title: file.originalname, url: `${base}/uploads/${file.filename}` })),
+      ],
     };
   }
 
@@ -73,6 +114,27 @@ export class PropertiesController {
     return this.propertyService.findPins(query);
   }
 
+  @Get('admin')
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.AGENT)
+  findAllForManagement(@Query() query: FilterPropertyDto, @Req() req: { user: { id: number; role: string } }) {
+    return this.propertyService.findAll({
+      ...query,
+      ownerId: req.user.role === 'admin' ? query.ownerId : String(req.user.id),
+    }, true);
+  }
+
+  @Get('admin/:id')
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.AGENT)
+  async findOneForManagement(@Param('id') id: string, @Req() req: { user: { id: number; role: string } }) {
+    const property = await this.propertyService.findOne(id, true);
+    if (req.user.role !== 'admin' && Number(property.owner?.id) !== req.user.id) {
+      throw new ForbiddenException('You do not own this property');
+    }
+    return property;
+  }
+
   @Get(':slug')
   findOne(@Param('slug') slug: string) {
     return this.propertyService.findOne(slug);
@@ -88,37 +150,46 @@ export class PropertiesController {
   @Roles(UserRole.ADMIN, UserRole.AGENT)
   @Post()
   @uploadInterceptor()
-  create(
+  async create(
     @Req() req: any,
     @Body() body: PropertyWriteDto,
-    @UploadedFiles() files: Express.Multer.File[],
+    @UploadedFiles() files: PropertyFiles,
   ) {
-    return this.propertyService.create({
-      ...this.transform(body, files),
-      owner: { id: req.user.id } as any,
-    });
+    await validateUploads(files);
+    try {
+      return await this.propertyService.create({
+        ...this.transform(body, files),
+        owner: { id: req.user.id } as any,
+      });
+    } catch (error) {
+      await removeUploads(files);
+      throw error;
+    }
   }
 
   // ── OWNER or ADMIN: UPDATE ───────────────────────────────
-  @UseGuards(JwtGuard)
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.AGENT)
   @Patch(':id')
   @uploadInterceptor()
-  update(
+  async update(
     @Param('id') id: number,
     @Body() body: PropertyWriteDto,
-    @UploadedFiles() files: Express.Multer.File[],
+    @UploadedFiles() files: PropertyFiles,
     @Req() req: any,
   ) {
-    return this.propertyService.update(
-      id,
-      body,
-      files,
-      req.user, // ownership check is inside the service
-    );
+    await validateUploads(files);
+    try {
+      return await this.propertyService.update(id, body, files, req.user);
+    } catch (error) {
+      await removeUploads(files);
+      throw error;
+    }
   }
 
   // ── OWNER or ADMIN: DELETE ───────────────────────────────
-  @UseGuards(JwtGuard)
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.AGENT)
   @Delete(':id')
   remove(@Param('id') id: string, @Req() req: any) {
     return this.propertyService.remove(id, req.user);
