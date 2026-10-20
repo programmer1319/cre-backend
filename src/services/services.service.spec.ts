@@ -2,8 +2,10 @@ import { BadRequestException } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { SiteService } from './service.entity';
 import { ServicesService } from './services.service';
+import { ConfigService } from '@nestjs/config';
 
 describe('ServicesService', () => {
+  const config = { get: jest.fn().mockReturnValue('http://localhost:3000') } as unknown as ConfigService;
   const value = {
     slug: 'new-service', title: 'New service', icon: 'pi-building', summary: 'A useful service',
     kicker: 'Advice', body: ['First paragraph'], outcomes: ['A result'],
@@ -18,7 +20,7 @@ describe('ServicesService', () => {
       create: jest.fn((item) => item),
       save: jest.fn(),
     } as unknown as Repository<SiteService>;
-    const service = new ServicesService(repo);
+    const service = new ServicesService(repo, config);
     await expect(service.create(value)).rejects.toBeInstanceOf(BadRequestException);
     expect(repo.save).not.toHaveBeenCalled();
   });
@@ -30,7 +32,7 @@ describe('ServicesService', () => {
       create: jest.fn((item) => item),
       save: jest.fn(async (item) => item),
     } as unknown as Repository<SiteService>;
-    const service = new ServicesService(repo);
+    const service = new ServicesService(repo, config);
     await service.create({ ...value, isActive: false });
     expect(repo.count).not.toHaveBeenCalled();
     expect(repo.save).toHaveBeenCalled();

@@ -1,10 +1,21 @@
+import 'dotenv/config';
 import sharp from 'sharp';
+import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+import mysql from 'mysql2/promise';
+import jsonwebtoken from 'jsonwebtoken';
 
 const apply = process.argv.includes('--apply');
-const base = process.env.DEMO_API_BASE_URL?.replace(/\/$/, '');
+const base = (process.env.DEMO_API_BASE_URL || 'http://localhost:3000/api').replace(/\/$/, '');
 const email = process.env.DEMO_ADMIN_EMAIL || 'muneeb.workstation@gmail.com';
-const password = process.env.DEMO_ADMIN_PASSWORD;
-const requestOrigin = process.env.DEMO_REQUEST_ORIGIN || 'https://crefolio.vercel.app';
+const requestOrigin = process.env.DEMO_REQUEST_ORIGIN || 'http://localhost:4200';
+const imageRoot = resolve(process.env.DEMO_IMAGE_ROOT || '../cre-frontend/public/img');
+const demoMarker = '[CreFolio fictional demonstration]';
+
+const target = new URL(base);
+if (!['localhost', '127.0.0.1', '::1'].includes(target.hostname)) {
+  throw new Error('The demo importer is local-only and refuses non-local API hosts');
+}
 
 const pages = [
   {
@@ -77,12 +88,14 @@ const services = [
 ];
 
 const properties = [
-  { title: 'Hudson Quarter Workspace · Sample', city: 'New York', location: 'Midtown West district (approximate)', propertyType: 'Office', transactionType: 'lease', price: 72, priceUnit: 'per sq ft / year', area: 12800, latitude: 40.7549, longitude: -73.9840, amenities: ['Reception', 'Flexible floor plate', 'Transit access', 'Bicycle storage'], featured: true },
-  { title: 'River North Corner Retail · Sample', city: 'Chicago', location: 'River North district (approximate)', propertyType: 'Retail', transactionType: 'lease', price: 58, priceUnit: 'per sq ft / year', area: 4200, latitude: 41.8925, longitude: -87.6340, amenities: ['Corner frontage', 'Ground-floor access', 'Storage area'], featured: true },
-  { title: 'Eastside Logistics Hub · Sample', city: 'Austin', location: 'East Austin district (approximate)', propertyType: 'Industrial', transactionType: 'sale', price: 4850000, priceUnit: '', area: 24500, latitude: 30.2672, longitude: -97.7431, amenities: ['Loading doors', 'Yard space', 'Office component'], featured: true },
-  { title: 'Market Street Studio Floors · Sample', city: 'San Francisco', location: 'SoMa district (approximate)', propertyType: 'Office', transactionType: 'sale-lease', price: 6750000, priceUnit: '', area: 9600, latitude: 37.7749, longitude: -122.4194, amenities: ['Natural light', 'Meeting rooms', 'Flexible layout'], featured: false },
-  { title: 'Bayfront Mixed Use Collection · Sample', city: 'Miami', location: 'Downtown district (approximate)', propertyType: 'Mixed use', transactionType: 'sale', price: 8200000, priceUnit: '', area: 18100, latitude: 25.7617, longitude: -80.1918, amenities: ['Retail frontage', 'Office floors', 'Parking access'], featured: false },
-  { title: 'South Lake Union Office Suite · Sample', city: 'Seattle', location: 'South Lake Union district (approximate)', propertyType: 'Office', transactionType: 'lease', price: 49, priceUnit: 'per sq ft / year', area: 7800, latitude: 47.6205, longitude: -122.3493, amenities: ['Shared lobby', 'Meeting rooms', 'Transit access'], featured: false, visibility: 'draft' },
+  { title: 'Hudson Quarter Workspace · Fictional', city: 'New York', location: 'Midtown West district (approximate)', propertyType: 'Office', transactionType: 'lease', status: 'available', visibility: 'published', price: 72, priceUnit: 'per sq ft / year', area: 12800, bedrooms: 14, bathrooms: 4, floor: '12–14', workstations: 118, parkingSpaces: 0, latitude: 40.7549, longitude: -73.9840, amenities: ['Staffed reception', 'Flexible floor plates', 'Conference suite', 'Bicycle storage', 'Showers'], featured: true, imageFiles: ['02-property-office-lobby.jpg', '06-executive-workspace.jpg', '10-rooftop-terrace.jpg'] },
+  { title: 'River North Corner Retail · Fictional', city: 'Chicago', location: 'River North district (approximate)', propertyType: 'Retail', transactionType: 'lease', status: 'available', visibility: 'published', price: 58, priceUnit: 'per sq ft / year', area: 4200, bedrooms: 3, bathrooms: 2, floor: 'Ground and lower ground', workstations: 0, parkingSpaces: 2, latitude: 41.8925, longitude: -87.6340, amenities: ['Dual-aspect frontage', 'Dedicated loading', 'Stock room', 'Outdoor signage zone'], featured: true, imageFiles: ['07-premium-retail.jpg', '05-contact-entrance.jpg', '04-services-facade.jpg'] },
+  { title: 'Eastside Logistics Hub · Fictional', city: 'Austin', location: 'East Austin district (approximate)', propertyType: 'Industrial', transactionType: 'sale', status: 'under-offer', visibility: 'published', price: 4850000, priceUnit: '', area: 24500, bedrooms: 2, bathrooms: 3, floor: 'Ground with mezzanine', workstations: 24, parkingSpaces: 34, latitude: 30.2672, longitude: -97.7431, amenities: ['Eight loading doors', 'Secure yard', 'Clear-span warehouse', 'Office mezzanine', 'EV charging'], featured: true, imageFiles: ['08-logistics-industrial.jpg', 'warehouse.jpg', '09-mixed-use-development.jpg'] },
+  { title: 'Market Street Studio Floors · Fictional', city: 'San Francisco', location: 'SoMa district (approximate)', propertyType: 'Office', transactionType: 'sale-lease', status: 'available', visibility: 'published', price: 6750000, priceUnit: '', area: 9600, bedrooms: 10, bathrooms: 4, floor: '5–6', workstations: 86, parkingSpaces: 6, latitude: 37.7749, longitude: -122.4194, amenities: ['Natural light', 'Boardroom', 'Flexible layout', 'Private terraces'], featured: false, imageFiles: ['highrise.jpg', 'glass-building.jpg', '06-executive-workspace.jpg'] },
+  { title: 'Bayfront Mixed Use Collection · Fictional', city: 'Miami', location: 'Downtown district (approximate)', propertyType: 'Mixed use', transactionType: 'sale', status: 'available', visibility: 'published', price: 8200000, priceUnit: '', area: 18100, bedrooms: 18, bathrooms: 7, floor: 'Ground–8', workstations: 72, parkingSpaces: 42, latitude: 25.7617, longitude: -80.1918, amenities: ['Retail frontage', 'Office floors', 'Rooftop terrace', 'Structured parking'], featured: true, imageFiles: ['09-mixed-use-development.jpg', '10-rooftop-terrace.jpg', '01-home-hero.jpg'] },
+  { title: 'South Lake Union Office Suite · Fictional', city: 'Seattle', location: 'South Lake Union district (approximate)', propertyType: 'Office', transactionType: 'lease', status: 'leased', visibility: 'published', price: 49, priceUnit: 'per sq ft / year', area: 7800, bedrooms: 8, bathrooms: 3, floor: '7', workstations: 64, parkingSpaces: 8, latitude: 47.6205, longitude: -122.3493, amenities: ['Shared lobby', 'Meeting rooms', 'Transit access', 'Wellness room'], featured: false, imageFiles: ['03-about-skyline.jpg', '02-property-office-lobby.jpg', '06-executive-workspace.jpg'] },
+  { title: 'Arts District Creative Warehouse · Fictional', city: 'Los Angeles', location: 'Arts District (approximate)', propertyType: 'Warehouse', transactionType: 'lease', status: 'available', visibility: 'published', price: 36, priceUnit: 'per sq ft / year', area: 15200, bedrooms: 4, bathrooms: 3, floor: 'Ground', workstations: 38, parkingSpaces: 18, latitude: 34.0407, longitude: -118.2327, amenities: ['Sawtooth roof', 'Grade-level loading', 'Creative offices', 'Secure parking'], featured: false, imageFiles: ['warehouse.jpg', '08-logistics-industrial.jpg', '04-services-facade.jpg'] },
+  { title: 'Back Bay Advisory Suite · Fictional draft', city: 'Boston', location: 'Back Bay district (approximate)', propertyType: 'Office', transactionType: 'lease', status: 'withdrawn', visibility: 'draft', price: 64, priceUnit: 'per sq ft / year', area: 6100, bedrooms: 7, bathrooms: 2, floor: '9', workstations: 48, parkingSpaces: 4, latitude: 42.3503, longitude: -71.0810, amenities: ['Client suite', 'Private offices', 'Kitchen', 'Transit access'], featured: false, imageFiles: ['06-executive-workspace.jpg', '02-property-office-lobby.jpg'] },
 ];
 
 const sectionType = (key) => ({ hero: 'hero', team: 'team', featured: 'gallery', expertise: 'grid', principles: 'grid', details: 'grid', form: 'form' })[key] || 'text';
@@ -113,10 +126,10 @@ function brochure(title) {
 }
 
 if (!apply) {
-  process.stdout.write(`Dry run: ${pages.length} pages, ${services.length} services, ${properties.length} properties, one enquiry, one contact message and one saved property.\nPass --apply with DEMO_API_BASE_URL and DEMO_ADMIN_PASSWORD to replace current content through the API.\n`);
+  process.stdout.write(`Dry run: up to ${pages.length} pages, ${services.length} services and ${properties.length} properties will be added through the local CRUD API. Existing records are preserved.\nPass --apply while the local API is running.\n`);
   process.exit(0);
 }
-if (!base || !password || !/^https?:\/\//.test(base)) throw new Error('DEMO_API_BASE_URL and DEMO_ADMIN_PASSWORD are required');
+if (!base || !/^https?:\/\//.test(base)) throw new Error('A valid local DEMO_API_BASE_URL is required');
 
 const cookies = new Map();
 async function request(method, path, body) {
@@ -137,93 +150,118 @@ async function request(method, path, body) {
   return text ? JSON.parse(text) : null;
 }
 
-const signedIn = await request('POST', '/user/login', { email, password });
+// Local import authentication is minted from the local database and JWT secret. No administrator
+// password is read, changed or printed; catalogue writes still pass through the guarded HTTP API.
+const connection = await mysql.createConnection({
+  host: process.env.DB_HOST || 'localhost',
+  port: Number(process.env.DB_PORT || 3306),
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASS || '',
+  database: process.env.DB_NAME || 'crefolio',
+});
+const [administrators] = await connection.execute(
+  'SELECT id, email, role, token_version AS tokenVersion FROM `user` WHERE LOWER(email) = LOWER(?) LIMIT 1',
+  [email],
+);
+await connection.end();
+const administrator = administrators[0];
+const secret = process.env.JWT_SECRET;
+if (!administrator || administrator.role !== 'admin') throw new Error('Local administrator was not found');
+if (!secret || secret.length < 32) throw new Error('JWT_SECRET must contain at least 32 characters');
+cookies.set('accessToken', jsonwebtoken.sign({
+  sub: administrator.id,
+  email: administrator.email,
+  role: administrator.role,
+  ver: administrator.tokenVersion ?? 0,
+}, secret, { expiresIn: '15m' }));
+
 const currentUser = await request('GET', '/user/me');
 if (currentUser.role !== 'admin' || currentUser.email.toLowerCase() !== email.toLowerCase()) throw new Error('Administrator verification failed');
-void signedIn;
 
-// Deletions use the same guarded CRUD routes as the dashboard. No database table is edited directly.
-// Read every management collection before the first write, so an old deployment or a missing
-// permission fails without leaving a half-cleared catalogue.
-const collections = {
-  notifications: '/notification',
-  favorites: '/favorites',
-  leads: '/leads',
-  contacts: '/contact',
-  properties: '/properties/admin?limit=48',
-  pages: '/pages',
-  services: '/services/admin',
-  media: '/media',
+const current = {
+  pages: await request('GET', '/pages'),
+  services: await request('GET', '/services/admin'),
+  properties: (await request('GET', '/properties/admin?limit=48')).data,
 };
-const current = {};
-const preflightErrors = [];
-for (const [name, path] of Object.entries(collections)) {
-  try {
-    current[name] = await request('GET', path);
-    process.stdout.write(`Preflight ${path}: OK\n`);
-  } catch (error) {
-    preflightErrors.push(error.message);
-  }
-}
-if (preflightErrors.length) throw new Error(`Preflight failed before changes:\n${preflightErrors.join('\n')}`);
-for (const notification of current.notifications) await request('DELETE', `/notification/${notification.id}`);
-for (const favorite of current.favorites) await request('POST', `/favorites/${favorite.property.id}`);
-for (const lead of current.leads) await request('DELETE', `/leads/${lead.id}`);
-for (const message of current.contacts) await request('DELETE', `/contact/${message.id}`);
-for (;;) {
-  const batch = await request('GET', '/properties/admin?limit=48');
-  if (!batch.data.length) break;
-  for (const property of batch.data) await request('DELETE', `/properties/${property.id}`);
-}
-for (const page of current.pages) await request('DELETE', `/pages/${page.slug}`);
-for (const service of current.services) await request('DELETE', `/services/${service.id}`);
-for (const media of current.media) await request('DELETE', `/media/${media.id}`);
+const added = { pages: 0, services: 0, properties: 0, servicesUpdated: 0, propertiesReplaced: 0 };
 
 for (const page of pages) {
-  const created = await request('POST', '/pages', { slug: page.slug, title: page.title, metaTitle: page.title, metaDescription: page.description, isActive: true });
+  if (current.pages.some((item) => item.slug === page.slug)) continue;
+  const created = await request('POST', '/pages', { slug: page.slug, title: page.title, metaTitle: page.title, metaDescription: `${demoMarker} ${page.description}`, isActive: true });
   let sortOrder = 0;
   for (const [sectionKey, content] of Object.entries(page.sections)) {
     await request('POST', '/sections', { pageId: created.id, sectionKey, sectionType: sectionType(sectionKey), content, galleryIds: [], sortOrder: sortOrder++, isActive: true });
   }
+  added.pages++;
 }
 
-for (const [index, [slug, title, icon, kicker, summary]] of services.entries()) {
-  const form = new FormData();
-  form.append('file', new Blob([await illustration(title, index)], { type: 'image/png' }), `${slug}.png`);
-  const media = await request('POST', '/media/upload', form);
-  await request('POST', '/services', {
-    slug, title, icon, kicker, summary,
-    image: `${new URL(base).origin}${media.url}`,
+for (const [index, [slug, title, icon, kicker, summary, imageFile]] of services.entries()) {
+  const existing = current.services.find((item) => item.slug === slug);
+  if (existing && !existing.kicker.includes('Fictional demonstration')) continue;
+  let image;
+  if (existing) {
+    image = new URL(existing.image, 'http://localhost').pathname;
+  } else {
+    const form = new FormData();
+    const serviceImage = imageFile.replace(/^img[\\/]/, '');
+    form.append('file', new Blob([await readFile(resolve(imageRoot, serviceImage))], { type: 'image/jpeg' }), serviceImage);
+    const media = await request('POST', '/media/upload', form);
+    image = media.url;
+  }
+  const payload = {
+    slug, title, icon, kicker: `${kicker} · Fictional demonstration`, summary,
+    image,
     body: [`${summary} This page is an original, illustrative example of a commercial property service.`, 'The steps below show how a client brief can be organized. No specific transaction or professional outcome is represented.'],
     outcomes: ['A documented requirement', 'A clear comparison of options', 'A record of the recommended next steps'],
     process: [{ title: 'Brief', detail: 'Define the commercial objective and constraints.' }, { title: 'Review', detail: 'Compare relevant options and supporting information.' }, { title: 'Decision', detail: 'Record the recommended action and the assumptions behind it.' }],
     faqs: [{ question: 'Is this an active service offer?', answer: 'No. This is illustrative content for a CreFolio client demonstration.' }],
     isActive: true, featured: index < 3, sortOrder: index,
-  });
+  };
+  if (existing) {
+    await request('PATCH', `/services/${existing.id}`, payload);
+    added.servicesUpdated++;
+  } else {
+    await request('POST', '/services', payload);
+    added.services++;
+  }
 }
 
-const createdProperties = [];
-for (const [index, property] of properties.entries()) {
+for (const property of current.properties) {
+  if (!properties.some((demo) => demo.title === property.title)) continue;
+  await request('DELETE', `/properties/${property.id}`);
+  added.propertiesReplaced++;
+}
+
+for (const property of properties) {
   const form = new FormData();
+  const { imageFiles, ...fields } = property;
   const record = {
-    ...property,
+    ...fields,
     description: `${property.title} is a fictional commercial property example set in the ${property.location}. The indicative ${property.area.toLocaleString('en-US')} sq ft area, pricing and specification demonstrate how a real listing would be presented. The map pin marks an approximate district centre rather than a property address. No actual asset is advertised.`,
-    bedrooms: 0, bathrooms: 0, status: 'available', visibility: property.visibility || 'published',
   };
   for (const [key, value] of Object.entries(record)) form.append(key, key === 'amenities' ? JSON.stringify(value) : String(value));
-  for (let view = 0; view < 3; view++) form.append('images', new Blob([await illustration(property.title, index + view)], { type: 'image/png' }), `sample-${index + 1}-${view + 1}.png`);
-  if (index < 2) form.append('documents', new Blob([brochure(property.title)], { type: 'application/pdf' }), `sample-brochure-${index + 1}.pdf`);
-  createdProperties.push(await request('POST', '/properties', form));
+  for (const imageFile of imageFiles) {
+    form.append('images', new Blob([await readFile(resolve(imageRoot, imageFile))], { type: 'image/jpeg' }), imageFile);
+  }
+  form.append('documents', new Blob([brochure(property.title)], { type: 'application/pdf' }), `${property.title.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-sample-brochure.pdf`);
+  await request('POST', '/properties', form);
+  added.properties++;
 }
 
-await request('POST', `/favorites/${createdProperties[0].id}`);
-await request('POST', '/leads', { name: 'Sample visitor', email: 'visitor@example.test', message: 'Illustrative enquiry: please show how this property is handled in the dashboard.', property: createdProperties[0].id });
-await request('POST', '/contact', { name: 'Sample prospect', email: 'prospect@example.test', company: 'Example Organisation', message: 'Illustrative contact message for the CreFolio demonstration workspace.' });
-
-const publicProperties = await request('GET', '/properties');
+const publicProperties = await request('GET', '/properties?limit=48');
 const publicServices = await request('GET', '/services');
 const home = await request('GET', '/pages/home');
-if (publicProperties.total !== properties.length - 1 || publicServices.length !== services.length || home.sections.hero.kicker !== 'Illustrative portfolio') {
+const importedProperties = (await request('GET', '/properties/admin?limit=48')).data.filter((item) => item.title.includes('· Fictional'));
+for (const property of importedProperties) {
+  const detail = await request('GET', `/properties/admin/${property.id}`);
+  if (!Number.isFinite(detail.latitude) || !Number.isFinite(detail.longitude) || (detail.latitude === 0 && detail.longitude === 0)) {
+    throw new Error(`Coordinate verification failed for ${detail.title}`);
+  }
+  if (!detail.imageVariants?.length || detail.imageVariants.some((image) => !image.gallery || !image.card || !image.thumbnail)) {
+    throw new Error(`Image variant verification failed for ${detail.title}`);
+  }
+}
+if (publicProperties.total < properties.filter((item) => item.visibility === 'published').length || publicServices.length < services.length || home.sections.hero.kicker !== 'Illustrative portfolio') {
   throw new Error('API verification failed after import');
 }
-process.stdout.write(`Imported ${publicProperties.total} published properties, ${publicServices.length} services and ${pages.length} pages. One draft property is available in the admin dashboard.\n`);
+process.stdout.write(`Added ${added.pages} pages, ${added.services} services and ${added.properties} properties through CRUD; updated ${added.servicesUpdated} demo services and replaced ${added.propertiesReplaced} demo properties. Verified ${importedProperties.length} fictional properties with coordinates and WebP variants; non-demo records were preserved.\n`);

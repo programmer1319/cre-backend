@@ -26,6 +26,7 @@ import { PropertyWriteDto } from './property-write.dto';
 import { propertyUploadConfig } from 'src/config/upload.config';
 import { open, unlink } from 'node:fs/promises';
 import sharp from 'sharp';
+import { createPropertyImageVariants, removePropertyImageFiles } from './property-images';
 
 const uploadInterceptor = () =>
   UseInterceptors(
@@ -33,8 +34,10 @@ const uploadInterceptor = () =>
   );
 
 type PropertyFiles = { images?: Express.Multer.File[]; documents?: Express.Multer.File[] };
-const allUploadedFiles = (files: PropertyFiles) => [...(files?.images ?? []), ...(files?.documents ?? [])];
-const removeUploads = (files: PropertyFiles) => Promise.all(allUploadedFiles(files).map((file) => unlink(file.path).catch(() => undefined)));
+const removeUploads = async (files: PropertyFiles) => {
+  await Promise.all((files?.documents ?? []).map((file) => unlink(file.path).catch(() => undefined)));
+  await removePropertyImageFiles((files?.images ?? []).map((file) => file.filename));
+};
 
 async function validateUploads(files: PropertyFiles) {
   try {
@@ -63,7 +66,6 @@ export class PropertiesController {
   constructor(private propertyService: PropertiesService) {}
 
   private transform(body: PropertyWriteDto, files: PropertyFiles) {
-    const base = (process.env.BASE_URL ?? '').replace(/\/$/, '');
     return {
       title: body.title,
       description: body.description,
@@ -74,6 +76,9 @@ export class PropertiesController {
       area: Number(body.area),
       bedrooms: Number(body.bedrooms),
       bathrooms: Number(body.bathrooms),
+      floor: body.floor?.trim() || null,
+      workstations: Number(body.workstations ?? 0),
+      parkingSpaces: Number(body.parkingSpaces ?? 0),
       latitude: Number(body.latitude),
       longitude: Number(body.longitude),
       images: files?.images?.map((f) => f.filename) ?? [],
@@ -85,7 +90,7 @@ export class PropertiesController {
       amenities: body.amenities ?? [],
       documents: [
         ...(body.documents ?? []),
-        ...(files.documents ?? []).map((file) => ({ title: file.originalname, url: `${base}/uploads/${file.filename}` })),
+        ...(files.documents ?? []).map((file) => ({ title: file.originalname, url: `/uploads/${file.filename}` })),
       ],
     };
   }
@@ -157,6 +162,7 @@ export class PropertiesController {
   ) {
     await validateUploads(files);
     try {
+      await createPropertyImageVariants(files?.images);
       return await this.propertyService.create({
         ...this.transform(body, files),
         owner: { id: req.user.id } as any,
@@ -180,6 +186,7 @@ export class PropertiesController {
   ) {
     await validateUploads(files);
     try {
+      await createPropertyImageVariants(files?.images);
       return await this.propertyService.update(id, body, files, req.user);
     } catch (error) {
       await removeUploads(files);

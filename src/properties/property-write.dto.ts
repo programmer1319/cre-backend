@@ -1,5 +1,5 @@
 import { Transform } from 'class-transformer';
-import { IsArray, IsBoolean, IsEnum, IsNumber, IsOptional, IsString, IsUrl, MaxLength, Min, MinLength, ValidateNested } from 'class-validator';
+import { IsArray, IsBoolean, IsEnum, IsNumber, IsOptional, IsString, Matches, MaxLength, Min, MinLength, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { Property } from './property.entity';
 
@@ -13,7 +13,7 @@ const asJsonArray = ({ value }: { value: unknown }) => {
 
 class PropertyDocumentDto {
   @IsString() @MinLength(2) @MaxLength(120) title!: string;
-  @IsUrl({ require_protocol: true, protocols: ['https'] }) url!: string;
+  @Matches(/^(https:\/\/|\/uploads\/)/, { message: 'document URL must use HTTPS or a local upload path' }) url!: string;
 }
 
 export class PropertyWriteDto {
@@ -26,6 +26,9 @@ export class PropertyWriteDto {
   @Transform(asNumber) @IsNumber() @Min(0) area!: number;
   @Transform(asNumber) @IsNumber() @Min(0) bedrooms!: number;
   @Transform(asNumber) @IsNumber() @Min(0) bathrooms!: number;
+  @IsOptional() @IsString() @MaxLength(60) floor?: string;
+  @IsOptional() @Transform(asNumber) @IsNumber() @Min(0) workstations?: number;
+  @IsOptional() @Transform(asNumber) @IsNumber() @Min(0) parkingSpaces?: number;
   @Transform(asNumber) @IsNumber() latitude!: number;
   @Transform(asNumber) @IsNumber() longitude!: number;
   @IsOptional() @IsEnum(['sale', 'lease', 'sale-lease']) transactionType?: Property['transactionType'];

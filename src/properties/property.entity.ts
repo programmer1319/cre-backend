@@ -106,6 +106,15 @@ export class Property {
   @Column({ default: 0 })
   area!: number;
 
+  @Column({ type: 'varchar', length: 60, nullable: true })
+  floor!: string | null;
+
+  @Column({ default: 0 })
+  workstations!: number;
+
+  @Column({ default: 0 })
+  parkingSpaces!: number;
+
   @ManyToOne(() => User, (user) => user.properties, { onDelete: 'CASCADE' })
   owner!: User;
 

@@ -10,6 +10,7 @@ import { FilterPropertyDto } from './filter-property.dto';
 import { MapBoundsDto } from './map-bounds.dto';
 import { PropertyWriteDto } from './property-write.dto';
 import { ConfigService } from '@nestjs/config';
+import { publicPropertyImageVariants, removePropertyDocumentFiles, removePropertyImageFiles } from './property-images';
 
 /** Hard ceiling on pins returned for one map viewport. */
 const MAP_RESULT_LIMIT = 300;
@@ -56,6 +57,9 @@ const LIST_COLUMNS = [
   'property.featured',
   'property.amenities',
   'property.documents',
+  'property.floor',
+  'property.workstations',
+  'property.parkingSpaces',
   // Coordinates ship with every list row so the map beside the list can plot the same
   // result set without a second round trip.
   'property.latitude',
@@ -227,7 +231,7 @@ export class PropertiesService {
 
     const images = [...kept, ...newImages];
     const { keepImages, ...raw } = body;
-    const numeric = ['price', 'area', 'bedrooms', 'bathrooms', 'latitude', 'longitude'];
+    const numeric = ['price', 'area', 'bedrooms', 'bathrooms', 'latitude', 'longitude', 'workstations', 'parkingSpaces'];
     const rest = Object.fromEntries(
       Object.entries(raw).map(([key, value]) => [key, numeric.includes(key) ? Number(value) : value]),
     );
@@ -244,10 +248,18 @@ export class PropertiesService {
         ...keptDocuments,
         ...(files.documents ?? []).map((file) => ({
           title: file.originalname,
-          url: `${(this.configService.get<string>('BASE_URL') ?? '').replace(/\/$/, '')}/uploads/${file.filename}`,
+          url: `/uploads/${file.filename}`,
         })),
       ],
     });
+    const removedImages = (existing.images ?? []).filter((filename) => !images.includes(filename));
+    const removedDocuments = (existing.documents ?? []).filter(
+      (document) => !keptDocuments.some((kept) => kept.url === document.url),
+    );
+    await Promise.all([
+      removePropertyImageFiles(removedImages),
+      removePropertyDocumentFiles(removedDocuments.map((document) => document.url)),
+    ]);
     return this.findOne(String(id), true);
   }
 
@@ -263,6 +275,10 @@ export class PropertiesService {
     this.assertOwnerOrAdmin(property, requestingUser);
 
     await this.propertyRepo.remove(property);
+    await Promise.all([
+      removePropertyImageFiles(property.images ?? []),
+      removePropertyDocumentFiles((property.documents ?? []).map((document) => document.url)),
+    ]);
     return { message: 'Property removed successfully' };
   }
 
@@ -431,6 +447,11 @@ export class PropertiesService {
     return {
       ...property,
       images: property.images?.map((img) => /^https?:\/\//.test(img) ? img : `${baseUrl}/uploads/${img}`) ?? [],
+      imageVariants: property.images?.filter((img) => !/^https?:\/\//.test(img)).map((img) => publicPropertyImageVariants(img, baseUrl)) ?? [],
+      documents: property.documents?.map((document) => ({
+        ...document,
+        url: /^https?:\/\//.test(document.url) ? document.url : `${baseUrl}${document.url}`,
+      })) ?? [],
     };
   }
 }
