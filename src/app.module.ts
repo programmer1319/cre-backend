@@ -25,7 +25,9 @@ import { LeadStatus2026101900000 } from './migrations/2026101900000-LeadStatus';
 import { ThrottlerModule } from '@nestjs/throttler';
 @Module({
   imports: [
-    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 10 }]),
+    // This is a safety fallback for guarded routes. Public write and authentication endpoints
+    // declare tighter limits beside the handlers so a normal dashboard load cannot exhaust them.
+    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 60 }]),
     ConfigModule.forRoot({
       isGlobal: true,
     }),
@@ -35,7 +37,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
       port: Number(process.env.DB_PORT ?? 3306),
       username: process.env.DB_USER ?? 'root',
       password: process.env.DB_PASS ?? 'admin',
-      database: process.env.DB_NAME ?? 'real_estate',
+      database: process.env.DB_NAME ?? 'crefolio',
       autoLoadEntities: true,
       synchronize: process.env.NODE_ENV !== 'production',
       migrations: [ServicesAndRecovery2026101600000, ContactAndProfiles2026101700000, SoleAdministrator2026101701000, PropertyDetails2026101800000, LeadStatus2026101900000],

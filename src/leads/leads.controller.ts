@@ -5,7 +5,7 @@ import { RolesGuard } from 'src/guards/roles.guard';
 import { Roles } from 'src/users/roles.decorater';
 import { UserRole } from 'src/users/user-role.enum';
 import { CreateLeadDto } from './create-lead.dto';
-import { ThrottlerGuard } from '@nestjs/throttler';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 
 @Controller('leads')
 export class LeadsController {
@@ -13,6 +13,7 @@ export class LeadsController {
 
   @Post()
   @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 6, ttl: 60_000 } })
   create(@Body() body: CreateLeadDto) {
     return this.leadsService.create(body);
   }

@@ -34,6 +34,7 @@ export class UsersController {
 
   @Post('login')
   @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 8, ttl: 60_000 } })
   login(
     @Body() body: LoginDto,
     @Res({ passthrough: true }) res: Response,
