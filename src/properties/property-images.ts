@@ -1,3 +1,4 @@
+import type { Property } from './property.entity';
 import sharp from 'sharp';
 import { basename, extname, join } from 'node:path';
 import { mkdir, unlink } from 'node:fs/promises';
@@ -83,5 +84,21 @@ export function publicPropertyImageVariants(filename: string, baseUrl: string): 
     gallery: publicUrl(paths.gallery),
     card: publicUrl(paths.card),
     thumbnail: publicUrl(paths.thumbnail),
+  };
+}
+
+/** Catalogue, detail and saved-property responses must expose the same usable asset URLs. */
+export function publicPropertyAssets(property: Property, base: string) {
+  const baseUrl = base.replace(/\/$/, '');
+  return {
+    ...property,
+    images: property.images?.map((img) => /^https?:\/\//.test(img) ? img : `${baseUrl}/uploads/${img}`) ?? [],
+    imageVariants: property.images
+      ?.filter((img) => !/^https?:\/\//.test(img) && hasPropertyImageVariants(img))
+      .map((img) => publicPropertyImageVariants(img, baseUrl)) ?? [],
+    documents: property.documents?.map((document) => ({
+      ...document,
+      url: /^https?:\/\//.test(document.url) ? document.url : `${baseUrl}${document.url}`,
+    })) ?? [],
   };
 }

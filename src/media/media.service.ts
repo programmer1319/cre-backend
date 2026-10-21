@@ -42,7 +42,7 @@ export class MediaService {
       width: meta.width,
       height: meta.height,
     });
-    return this.repo.save(media);
+    return this.withPublicUrl(await this.repo.save(media));
   }
 
   async findAll(): Promise<Media[]> {

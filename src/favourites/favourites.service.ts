@@ -3,6 +3,7 @@ import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Favorite } from './favourites.entity';
 import { Property } from '../properties/property.entity';
+import { publicPropertyAssets } from '../properties/property-images';
 
 @Injectable()
 export class FavouritesService {
@@ -48,7 +49,7 @@ export class FavouritesService {
   }
 
   async getUserFavorites(userId: number) {
-    return this.favoriteRepo.find({
+    const favorites = await this.favoriteRepo.find({
       where: {
         user: { id: userId },
         property: { visibility: 'published' },
@@ -58,5 +59,9 @@ export class FavouritesService {
         createdAt: 'DESC',
       },
     });
+    return favorites.map((favorite) => ({
+      ...favorite,
+      property: publicPropertyAssets(favorite.property, process.env.BASE_URL ?? 'http://api.local.test:3000'),
+    }));
   }
 }

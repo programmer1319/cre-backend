@@ -53,7 +53,7 @@ export class LeadsService {
     if (settings.emailNewLeads && property.owner.email) {
       await this.mailService.send({ to: property.owner.email, replyTo: data.email, subject: `New enquiry for ${property.title}`, text: `${data.name}\n${data.email}\n\n${data.message}` }).catch(() => undefined);
     }
-    return lead;
+    return this.publicLead(lead);
   }
 
   /**
@@ -91,7 +91,7 @@ export class LeadsService {
     this.assertOwnerOrAdmin(lead, user);
 
     lead.status = status;
-    return this.leadRepo.save(lead);
+    return this.publicLead(await this.leadRepo.save(lead));
   }
 
   async remove(id: number, user: { id: number; role: string }) {
@@ -108,6 +108,20 @@ export class LeadsService {
   }
 
   /** An enquiry belongs to whoever owns the property it was raised against. */
+  private publicLead(lead: Lead) {
+    // Write handlers load the owner for authorization/mail. Never serialize that user entity:
+    // it includes password and tokenVersion, which are not part of the enquiry contract.
+    return {
+      id: lead.id,
+      name: lead.name,
+      email: lead.email,
+      message: lead.message,
+      status: lead.status,
+      createdAt: lead.createdAt,
+      property: lead.property ? { id: lead.property.id, title: lead.property.title } : null,
+    };
+  }
+
   private assertOwnerOrAdmin(lead: Lead, user: { id: number; role: string }) {
     if (user.role === 'admin') return;
     if (Number(lead.property?.owner?.id) !== Number(user.id)) {

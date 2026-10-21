@@ -11,8 +11,7 @@ import { MapBoundsDto } from './map-bounds.dto';
 import { PropertyWriteDto } from './property-write.dto';
 import { ConfigService } from '@nestjs/config';
 import {
-  hasPropertyImageVariants,
-  publicPropertyImageVariants,
+  publicPropertyAssets,
   removePropertyDocumentFiles,
   removePropertyImageFiles,
 } from './property-images';
@@ -241,8 +240,14 @@ export class PropertiesService {
       Object.entries(raw).map(([key, value]) => [key, numeric.includes(key) ? Number(value) : value]),
     );
 
-    const keptDocuments = (body.documents ?? []).filter((document) =>
-      (existing.documents ?? []).some((saved) => saved.url === document.url && saved.title === document.title),
+    // The read API expands local paths to absolute URLs. Match that representation, but
+    // persist the original record so a routine edit cannot lose or relocate a brochure.
+    const publicDocuments = this.appendImageUrls(existing).documents;
+    const keptDocuments = (existing.documents ?? []).filter((saved, index) =>
+      (body.documents ?? []).some((document) =>
+        document.title === saved.title &&
+        (document.url === saved.url || document.url === publicDocuments[index]?.url),
+      ),
     );
 
     await this.propertyRepo.save({
@@ -449,16 +454,6 @@ export class PropertiesService {
   private appendImageUrls(property: Property) {
     const baseUrl = (this.configService.get<string>('BASE_URL') ?? 'http://api.local.test:3000').replace(/\/$/, '');
 
-    return {
-      ...property,
-      images: property.images?.map((img) => /^https?:\/\//.test(img) ? img : `${baseUrl}/uploads/${img}`) ?? [],
-      imageVariants: property.images
-        ?.filter((img) => !/^https?:\/\//.test(img) && hasPropertyImageVariants(img))
-        .map((img) => publicPropertyImageVariants(img, baseUrl)) ?? [],
-      documents: property.documents?.map((document) => ({
-        ...document,
-        url: /^https?:\/\//.test(document.url) ? document.url : `${baseUrl}${document.url}`,
-      })) ?? [],
-    };
+    return publicPropertyAssets(property, baseUrl);
   }
 }

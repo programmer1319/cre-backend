@@ -42,4 +42,13 @@ describe('PropertiesService', () => {
     const subject = new PropertiesService({} as ConfigService, repo as unknown as Repository<Property>);
     await expect(subject.update(7, {} as never, {}, { id: 2, role: 'agent' })).rejects.toThrow('You do not own this property');
   });
+
+  it('retains a local brochure when the edit form sends its public absolute URL', async () => {
+    const existing = { id: 7, owner: { id: 1 }, images: [], documents: [{ title: 'Brochure', url: '/uploads/brochure.pdf' }] };
+    const repo = { findOne: jest.fn().mockResolvedValue(existing), save: jest.fn().mockResolvedValue(existing) };
+    const subject = new PropertiesService({ get: () => 'https://example.test' } as unknown as ConfigService, repo as unknown as Repository<Property>);
+    jest.spyOn(subject, 'findOne').mockResolvedValue(existing as never);
+    await subject.update(7, { documents: [{ title: 'Brochure', url: 'https://example.test/uploads/brochure.pdf' }] } as never, {}, { id: 1, role: 'agent' });
+    expect(repo.save).toHaveBeenCalledWith(expect.objectContaining({ documents: existing.documents }));
+  });
 });

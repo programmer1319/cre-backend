@@ -37,4 +37,16 @@ describe('ServicesService', () => {
     expect(repo.count).not.toHaveBeenCalled();
     expect(repo.save).toHaveBeenCalled();
   });
+
+  it('expands uploaded images and preserves bundled frontend image paths', async () => {
+    const repo = { find: jest.fn().mockResolvedValue([
+      { ...value, image: 'img/04-services-facade.jpg' },
+      { ...value, image: '/uploads/service.webp' },
+      { ...value, image: 'https://images.example.test/service.webp' },
+    ]) } as unknown as Repository<SiteService>;
+    const result = await new ServicesService(repo, config).publicList();
+    expect(result.map((item) => item.image)).toEqual([
+      'img/04-services-facade.jpg', 'http://localhost:3000/uploads/service.webp', 'https://images.example.test/service.webp',
+    ]);
+  });
 });

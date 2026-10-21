@@ -1,4 +1,4 @@
-import { Transform } from 'class-transformer';
+import { plainToInstance, Transform } from 'class-transformer';
 import { IsArray, IsBoolean, IsEnum, IsNumber, IsOptional, IsString, Matches, MaxLength, Min, MinLength, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { Property } from './property.entity';
@@ -37,6 +37,10 @@ export class PropertyWriteDto {
   @IsOptional() @IsString() @MaxLength(80) priceUnit?: string;
   @IsOptional() @Transform(asBoolean) @IsBoolean() featured?: boolean;
   @IsOptional() @Transform(asJsonArray) @IsArray() @IsString({ each: true }) amenities?: string[];
-  @IsOptional() @Transform(asJsonArray) @IsArray() @ValidateNested({ each: true }) @Type(() => PropertyDocumentDto) documents?: PropertyDocumentDto[];
+  // Multipart JSON is parsed after @Type runs, so explicitly hydrate each nested DTO.
+  @IsOptional() @Transform(({ value }) => {
+    const parsed: unknown = asJsonArray({ value });
+    return Array.isArray(parsed) ? plainToInstance(PropertyDocumentDto, parsed) : parsed;
+  }) @IsArray() @ValidateNested({ each: true }) @Type(() => PropertyDocumentDto) documents?: PropertyDocumentDto[];
   @IsOptional() @IsString({ each: true }) keepImages?: string | string[];
 }

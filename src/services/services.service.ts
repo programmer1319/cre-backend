@@ -65,7 +65,8 @@ export class ServicesService {
     const base = (this.config.get<string>('BASE_URL') ?? '').replace(/\/$/, '');
     return {
       ...service,
-      image: /^https?:\/\//.test(service.image) ? service.image : `${base}${service.image}`,
+      // Uploads belong to the API host; bundled img/ assets belong to the frontend.
+      image: service.image.startsWith('/uploads/') ? `${base}${service.image}` : service.image,
     };
   }
 }

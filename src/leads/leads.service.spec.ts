@@ -25,4 +25,14 @@ describe('LeadsService', () => {
     await expect(subject.create({ name: 'Visitor', email: 'visitor@example.test', message: 'Could you send details?', property: 12 })).rejects.toThrow('Property not found');
     expect(propertyRepo.findOne).toHaveBeenCalledWith({ where: { id: 12, visibility: 'published' }, relations: ['owner'] });
   });
+
+  it('does not return the loaded owner credentials after a status update', async () => {
+    const lead = { id: 3, status: 'new', property: { id: 9, title: 'Office', owner: { id: 1, password: 'private-hash', tokenVersion: 7 } } };
+    const repo = { findOne: jest.fn().mockResolvedValue(lead), save: jest.fn(async (item) => item) };
+    const subject = new LeadsService({} as never, {} as never, {} as never, {} as never, repo as never, {} as never);
+    const result = await subject.updateStatus(3, 'contacted', { id: 1, role: 'agent' });
+    expect(result.property).toEqual({ id: 9, title: 'Office' });
+    expect(JSON.stringify(result)).not.toContain('private-hash');
+    expect(JSON.stringify(result)).not.toContain('tokenVersion');
+  });
 });
