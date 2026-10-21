@@ -3,12 +3,15 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 import cookieParser from 'cookie-parser';
 import { Logger, ValidationPipe } from '@nestjs/common';
-import { join } from 'path';
+import { basename, extname, join } from 'path';
 import { mkdir } from 'fs/promises';
+import { existsSync } from 'fs';
 import type { NextFunction, Request, Response } from 'express';
 
 async function bootstrap() {
-  await mkdir(join(process.cwd(), 'uploads', 'thumbs'), { recursive: true });
+  const runtimeUploads = join(process.cwd(), 'uploads');
+  const demoUploads = join(__dirname, 'demo-assets');
+  await mkdir(join(runtimeUploads, 'variants'), { recursive: true });
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const httpLogger = new Logger('HTTP');
   app.disable('x-powered-by');
@@ -58,13 +61,25 @@ async function bootstrap() {
     whitelist: true,
     forbidNonWhitelisted: true,
   }));
-  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
+  const staticOptions = {
     prefix: '/uploads',
     maxAge: 31_536_000_000,
     immutable: true,
     setHeaders: (res) => {
       res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
     },
+  };
+  app.useStaticAssets(runtimeUploads, staticOptions);
+  app.useStaticAssets(demoUploads, staticOptions);
+  app.use('/uploads', (req: Request, res: Response, next: NextFunction) => {
+    const filename = basename(req.path);
+    if (req.path !== `/${filename}` || !/^[-\w]+\.(?:jpe?g|png|webp)$/i.test(filename)) {
+      return next();
+    }
+
+    const gallery = `${basename(filename, extname(filename))}-gallery.webp`;
+    if (!existsSync(join(demoUploads, 'variants', gallery))) return next();
+    return res.redirect(302, `/uploads/variants/${gallery}`);
   });
   await app.listen(process.env.PORT ?? 3000, process.env.HOST ?? '0.0.0.0');
 }

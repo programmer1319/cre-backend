@@ -47,16 +47,29 @@ export class AuthService {
   verifyToken(token: string) {
     return this.jwtService.verify<JwtPayload>(token);
   }
+
+  async session(accessToken: string | undefined, refreshToken: string | undefined, res: Response) {
+    const accessUser = accessToken ? await this.userForToken(accessToken) : null;
+    if (accessUser) return { user: this.publicUser(accessUser) };
+
+    const refreshUser = refreshToken ? await this.userForToken(refreshToken) : null;
+    if (refreshUser) {
+      this.issueAccessToken(refreshUser, res);
+      return { user: this.publicUser(refreshUser) };
+    }
+
+    if (accessToken || refreshToken) {
+      res.clearCookie('accessToken', this.cookieConfig);
+      res.clearCookie('refreshToken', this.cookieConfig);
+    }
+    return { user: null };
+  }
+
   private issueTokens(user: User, res: Response) {
     const payload = { sub: user.id, email: user.email, role: user.role, ver: user.tokenVersion ?? 0 };
 
-    const accessToken = this.jwtService.sign(payload, { expiresIn: '15m' });
+    this.issueAccessToken(user, res);
     const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
-    res.cookie('accessToken', accessToken, {
-      ...this.cookieConfig,
-      maxAge: 15 * 60 * 1000,
-    });
-
     res.cookie('refreshToken', refreshToken, {
       ...this.cookieConfig,
       maxAge: 7 * 24 * 60 * 60 * 1000,
@@ -74,15 +87,7 @@ export class AuthService {
       if (!user) throw new UnauthorizedException('Account no longer exists');
       if ((payload.ver ?? 0) !== (user.tokenVersion ?? 0)) throw new UnauthorizedException('Session expired');
 
-      const newAccessToken = this.jwtService.sign(
-        { sub: user.id, email: user.email, role: user.role, ver: user.tokenVersion ?? 0 },
-        { expiresIn: '15m' },
-      );
-
-      res.cookie('accessToken', newAccessToken, {
-        ...this.cookieConfig,
-        maxAge: 15 * 60 * 1000,
-      });
+      this.issueAccessToken(user, res);
  
       return { success: true };
     } catch {
@@ -94,5 +99,34 @@ export class AuthService {
     res.clearCookie('accessToken', this.cookieConfig);
     res.clearCookie('refreshToken', this.cookieConfig);
     return { message: 'Logged out successfully' };
+  }
+
+  private issueAccessToken(user: User, res: Response) {
+    const accessToken = this.jwtService.sign(
+      { sub: user.id, email: user.email, role: user.role, ver: user.tokenVersion ?? 0 },
+      { expiresIn: '15m' },
+    );
+    res.cookie('accessToken', accessToken, {
+      ...this.cookieConfig,
+      maxAge: 15 * 60 * 1000,
+    });
+  }
+
+  private async userForToken(token: string): Promise<User | null> {
+    let payload: JwtPayload;
+    try {
+      payload = this.jwtService.verify<JwtPayload>(token);
+    } catch {
+      return null;
+    }
+
+    const user = await this.userRepository.findOne({ where: { id: payload.sub } });
+    if (!user || (payload.ver ?? 0) !== (user.tokenVersion ?? 0)) return null;
+    return user;
+  }
+
+  private publicUser(user: User) {
+    const { password: _password, tokenVersion: _tokenVersion, ...publicUser } = user;
+    return publicUser;
   }
 }

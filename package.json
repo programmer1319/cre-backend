@@ -7,7 +7,7 @@
   "license": "UNLICENSED",
   "scripts": {
     "db:init": "node tools/initialize-database.cjs --apply",
-    "build": "node ./node_modules/@nestjs/cli/bin/nest.js build && node tools/validate-entity-metadata.cjs",
+    "build": "node ./node_modules/@nestjs/cli/bin/nest.js build && node tools/copy-demo-assets.cjs && node tools/validate-entity-metadata.cjs",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",

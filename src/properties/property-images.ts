@@ -11,6 +11,7 @@ export interface PropertyImageVariants {
 }
 
 const VARIANT_DIRECTORY = join('uploads', 'variants');
+const DEMO_VARIANT_DIRECTORY = join('demo-assets', 'variants');
 
 const variantFilename = (filename: string, kind: 'gallery' | 'card' | 'thumb') =>
   `${basename(filename, extname(filename))}-${kind}.webp`;
@@ -24,7 +25,14 @@ export const propertyVariantPaths = (filename: string) => ({
 /** Legacy uploads may predate variant generation; only advertise files that are actually present. */
 export function hasPropertyImageVariants(filename: string): boolean {
   const paths = propertyVariantPaths(filename);
-  return existsSync(paths.gallery) && existsSync(paths.card) && existsSync(paths.thumbnail);
+  if (existsSync(paths.gallery) && existsSync(paths.card) && existsSync(paths.thumbnail)) return true;
+
+  const demoPaths = {
+    gallery: join(DEMO_VARIANT_DIRECTORY, variantFilename(filename, 'gallery')),
+    card: join(DEMO_VARIANT_DIRECTORY, variantFilename(filename, 'card')),
+    thumbnail: join(DEMO_VARIANT_DIRECTORY, variantFilename(filename, 'thumb')),
+  };
+  return existsSync(demoPaths.gallery) && existsSync(demoPaths.card) && existsSync(demoPaths.thumbnail);
 }
 
 /**

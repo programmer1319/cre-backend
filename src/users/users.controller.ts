@@ -94,6 +94,12 @@ export class UsersController {
     return this.usersService.findOne(String(req.user.id));
   }
 
+  @Get('session')
+  session(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const cookies = req.cookies as Record<string, string> | undefined;
+    return this.authService.session(cookies?.['accessToken'], cookies?.['refreshToken'], res);
+  }
+
   @UseGuards(JwtGuard)
   @Patch('me')
   updateProfile(@Req() req: Request & { user: { id: number } }, @Body() body: UpdateProfileDto) {
