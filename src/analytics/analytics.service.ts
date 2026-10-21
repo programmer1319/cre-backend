@@ -19,6 +19,30 @@ export class AnalyticsService {
     private userRepo: Repository<User>,
   ) {}
 
+  /** One dashboard read prevents a normal page load from bursting the hosting gateway. */
+  async overview(months: number, user: { id: number; role: string }) {
+    const [stats, revenue, holdings, recentLeads] = await Promise.all([
+      this.stats(),
+      this.revenue(months),
+      this.holdings(),
+      this.recentLeads(user),
+    ]);
+    return { stats, revenue, holdings, recentLeads };
+  }
+
+  private recentLeads(user: { id: number; role: string }) {
+    const query = this.leadRepo
+      .createQueryBuilder('lead')
+      .leftJoinAndSelect('lead.property', 'property')
+      .leftJoin('property.owner', 'owner')
+      .select(['lead.id', 'lead.name', 'lead.createdAt', 'property.id', 'property.title'])
+      .orderBy('lead.createdAt', 'DESC')
+      .take(4);
+
+    if (user.role !== 'admin') query.where('owner.id = :ownerId', { ownerId: user.id });
+    return query.getMany();
+  }
+
   async stats() {
     const [properties, leads, users, revenueRow] = await Promise.all([
       this.propertyRepo.count(),

@@ -60,6 +60,11 @@ async function bootstrap() {
   }));
   app.useStaticAssets(join(__dirname, '..', 'uploads'), {
     prefix: '/uploads',
+    maxAge: 31_536_000_000,
+    immutable: true,
+    setHeaders: (res) => {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    },
   });
   await app.listen(process.env.PORT ?? 3000, process.env.HOST ?? '0.0.0.0');
 }

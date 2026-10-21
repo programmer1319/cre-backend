@@ -1,4 +1,5 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, Req, UseGuards } from '@nestjs/common';
+import type { Request } from 'express';
 import { AnalyticsService } from './analytics.service';
 import { JwtGuard } from 'src/auth/jwt/jwt.guard';
 import { RolesGuard } from 'src/guards/roles.guard';
@@ -15,6 +16,14 @@ export class AnalyticsController {
   @Get('stats')
   stats() {
     return this.analyticsService.stats();
+  }
+
+  @Get('overview')
+  overview(
+    @Query() query: AnalyticsRangeDto,
+    @Req() req: Request & { user: { id: number; role: string } },
+  ) {
+    return this.analyticsService.overview(Number(query.months ?? 6), req.user);
   }
 
   @Get('revenue')

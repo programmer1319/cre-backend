@@ -10,7 +10,12 @@ import { FilterPropertyDto } from './filter-property.dto';
 import { MapBoundsDto } from './map-bounds.dto';
 import { PropertyWriteDto } from './property-write.dto';
 import { ConfigService } from '@nestjs/config';
-import { publicPropertyImageVariants, removePropertyDocumentFiles, removePropertyImageFiles } from './property-images';
+import {
+  hasPropertyImageVariants,
+  publicPropertyImageVariants,
+  removePropertyDocumentFiles,
+  removePropertyImageFiles,
+} from './property-images';
 
 /** Hard ceiling on pins returned for one map viewport. */
 const MAP_RESULT_LIMIT = 300;
@@ -447,7 +452,9 @@ export class PropertiesService {
     return {
       ...property,
       images: property.images?.map((img) => /^https?:\/\//.test(img) ? img : `${baseUrl}/uploads/${img}`) ?? [],
-      imageVariants: property.images?.filter((img) => !/^https?:\/\//.test(img)).map((img) => publicPropertyImageVariants(img, baseUrl)) ?? [],
+      imageVariants: property.images
+        ?.filter((img) => !/^https?:\/\//.test(img) && hasPropertyImageVariants(img))
+        .map((img) => publicPropertyImageVariants(img, baseUrl)) ?? [],
       documents: property.documents?.map((document) => ({
         ...document,
         url: /^https?:\/\//.test(document.url) ? document.url : `${baseUrl}${document.url}`,

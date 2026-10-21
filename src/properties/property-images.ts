@@ -1,6 +1,7 @@
 import sharp from 'sharp';
 import { basename, extname, join } from 'node:path';
 import { mkdir, unlink } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 
 export interface PropertyImageVariants {
   source: string;
@@ -19,6 +20,12 @@ export const propertyVariantPaths = (filename: string) => ({
   card: join(VARIANT_DIRECTORY, variantFilename(filename, 'card')),
   thumbnail: join(VARIANT_DIRECTORY, variantFilename(filename, 'thumb')),
 });
+
+/** Legacy uploads may predate variant generation; only advertise files that are actually present. */
+export function hasPropertyImageVariants(filename: string): boolean {
+  const paths = propertyVariantPaths(filename);
+  return existsSync(paths.gallery) && existsSync(paths.card) && existsSync(paths.thumbnail);
+}
 
 /**
  * Builds the three crops used by the product while retaining the uploaded source.
